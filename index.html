@@ -206,6 +206,8 @@
 </footer>
 
 <script type="module">
+import { encU8, decU8, bytesToB64, b64ToBytes, jsonToYaml, yamlToJson, qrEncode } from './lib.js';
+
 // ---------- helpers ----------
 const el = (tag, attrs={}, ...kids)=>{
   const n = document.createElement(tag);
@@ -234,145 +236,7 @@ function field(labelText, node){
 }
 function outputBox(){ return el('div',{class:'out'}); }
 
-// UTF-8 <-> bytes <-> base64 (no deprecated escape/unescape).
-const bytesToB64 = (bytes)=>{ let bin=''; for(const b of bytes) bin+=String.fromCharCode(b); return btoa(bin); };
-const b64ToBytes = (b64)=>{ const bin=atob(b64); const out=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i); return out; };
-const encU8 = (str)=>new TextEncoder().encode(str);
-const decU8 = (bytes)=>new TextDecoder().decode(bytes);
-
-// ---------- JSON <-> YAML (block style; parser handles the common subset) ----------
-function jsonToYaml(value){
-  const q=(s)=>{ if(s==='') return '""';
-    if(/^[\s>|@`"'%#&*!?{}\[\],]/.test(s) || /:(\s|$)/.test(s) || /\s#/.test(s) ||
-       /^(true|false|null|~|yes|no|on|off)$/i.test(s) || (/^[+-]?(\d|\.\d)/.test(s) && !isNaN(Number(s))))
-      return JSON.stringify(s);
-    return s; };
-  const scalar=(v)=>{ if(v===null) return 'null'; if(Array.isArray(v)) return '[]'; if(typeof v==='object') return '{}'; return typeof v==='string'?q(v):String(v); };
-  const lines=[];
-  const walk=(v,ind)=>{ const pad='  '.repeat(ind);
-    if(Array.isArray(v)){ if(!v.length){ lines.push(pad+'[]'); return; }
-      for(const it of v){ if(it!==null && typeof it==='object' && (Array.isArray(it)?it.length:Object.keys(it).length)){ lines.push(pad+'-'); walk(it,ind+1); } else lines.push(pad+'- '+scalar(it)); } }
-    else if(v!==null && typeof v==='object'){ const ks=Object.keys(v); if(!ks.length){ lines.push(pad+'{}'); return; }
-      for(const k of ks){ const val=v[k];
-        if(val!==null && typeof val==='object' && (Array.isArray(val)?val.length:Object.keys(val).length)){ lines.push(pad+q(k)+':'); walk(val,ind+1); }
-        else lines.push(pad+q(k)+': '+scalar(val)); } }
-    else lines.push(pad+scalar(v)); };
-  walk(value,0);
-  return lines.join('\n');
-}
-function yamlToJson(text){
-  const lines=text.replace(/\t/g,'  ').split('\n').map(l=>l.replace(/\s+#.*$/,'')).filter(l=>l.trim()!=='' && !/^\s*#/.test(l));
-  let i=0;
-  const indentOf=l=>l.match(/^ */)[0].length;
-  const flowFix=s=>s.replace(/([{,\[]\s*)([A-Za-z_][\w -]*?)(\s*:)/g,'$1"$2"$3');
-  const scalar=(s)=>{ s=s.trim();
-    if(s===''||s==='~'||s==='null') return null;
-    if(s==='true') return true; if(s==='false') return false;
-    if(s[0]==='"'&&s.endsWith('"')){ try{ return JSON.parse(s); }catch{ return s.slice(1,-1); } }
-    if(s[0]==="'"&&s.endsWith("'")) return s.slice(1,-1).replace(/''/g,"'");
-    if(s[0]==='['||s[0]==='{'){ try{ return JSON.parse(flowFix(s)); }catch{ return s; } }
-    if(/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(s)) return Number(s);
-    return s; };
-  const parse=(min)=>{
-    const first=lines[i];
-    if(!first.trim().startsWith('- ') && first.trim()!=='-' && first.indexOf(':')<0){ i++; return scalar(first.trim()); }
-    if(first.trim().startsWith('- ')||first.trim()==='-'){
-      const arr=[];
-      while(i<lines.length){ const l=lines[i], ind=indentOf(l), t=l.trim();
-        if(ind<min || !(t==='-'||t.startsWith('- '))) break;
-        const rest=t==='-'?'':t.slice(2); i++;
-        if(rest==='') arr.push(i<lines.length && indentOf(lines[i])>ind ? parse(ind+1) : null);
-        else if(/^[^:\n]+:(\s|$)/.test(rest)){ lines[i-1]=' '.repeat(ind+2)+rest; i--; arr.push(parse(ind+2)); }
-        else arr.push(scalar(rest)); }
-      return arr;
-    }
-    const obj={};
-    while(i<lines.length){ const l=lines[i], ind=indentOf(l), t=l.trim();
-      if(ind<min || t.startsWith('- ')) break;
-      const ci=t.indexOf(':'); if(ci<0){ i++; continue; }
-      const key=t.slice(0,ci).trim().replace(/^["']|["']$/g,''); const val=t.slice(ci+1).trim(); i++;
-      obj[key]= val==='' ? (i<lines.length && indentOf(lines[i])>ind ? parse(ind+1) : null) : scalar(val); }
-    return obj;
-  };
-  return lines.length?parse(0):null;
-}
-
-// ---------- QR encoder (byte mode, ECC level M, versions 1-10) ----------
-const QR=(()=>{
-  const EXP=new Array(512), LOG=new Array(256);
-  for(let i=0,x=1;i<255;i++){ EXP[i]=x; LOG[x]=i; x<<=1; if(x&0x100)x^=0x11d; }
-  for(let i=255;i<512;i++) EXP[i]=EXP[i-255];
-  const mul=(a,b)=>(a===0||b===0)?0:EXP[LOG[a]+LOG[b]];
-  const genPoly=(deg)=>{ let p=[1]; for(let i=0;i<deg;i++){ const np=new Array(p.length+1).fill(0);
-    for(let j=0;j<p.length;j++){ np[j]^=mul(p[j],EXP[i]); np[j+1]^=p[j]; } p=np; } return p; };
-  const rsEncode=(data,ecLen)=>{ const gen=genPoly(ecLen).reverse(), res=new Array(ecLen).fill(0);
-    for(const d of data){ const f=d^res[0]; res.shift(); res.push(0); if(f!==0) for(let i=0;i<ecLen;i++) res[i]^=mul(gen[i+1],f); }
-    return res; };
-  // level M: [dataCodewords, ecPerBlock, [[blockCount, dataPerBlock], ...]]
-  const M={1:[16,10,[[1,16]]],2:[28,16,[[1,28]]],3:[44,26,[[1,44]]],4:[64,18,[[2,32]]],5:[86,24,[[2,43]]],6:[108,16,[[4,27]]],7:[124,18,[[4,31]]],8:[154,22,[[2,38],[2,39]]],9:[182,22,[[3,36],[2,37]]],10:[216,26,[[4,43],[1,44]]]};
-  const ALIGN={1:[],2:[6,18],3:[6,22],4:[6,26],5:[6,30],6:[6,34],7:[6,22,38],8:[6,24,42],9:[6,26,46],10:[6,28,50]};
-  const FMT=[0x5412,0x5125,0x5E7C,0x5B4B,0x45F9,0x40CE,0x4F97,0x4AA0]; // level M format info per mask
-  const VER={7:0x07C94,8:0x085BC,9:0x09A99,10:0x0A4D3};
-  function encode(text){
-    const bytes=new TextEncoder().encode(text);
-    let version=0;
-    for(let v=1;v<=10;v++){ const cc=v>=10?16:8; if(4+cc+8*bytes.length <= M[v][0]*8){ version=v; break; } }
-    if(!version) throw new Error('Text too long — max ~'+(M[10][0]-3)+' bytes at this quality.');
-    const [dataCW,ecLen,blocks]=M[version], cc=version>=10?16:8, size=17+4*version;
-    const bits=[]; const put=(val,len)=>{ for(let b=len-1;b>=0;b--) bits.push((val>>b)&1); };
-    put(4,4); put(bytes.length,cc); for(const b of bytes) put(b,8);
-    const cap=dataCW*8; for(let k=0;k<4 && bits.length<cap;k++) bits.push(0);
-    while(bits.length%8) bits.push(0);
-    for(let pi=0; bits.length<cap; pi++) put(pi%2?0x11:0xEC,8);
-    const dcw=[]; for(let k=0;k<bits.length;k+=8){ let b=0; for(let j=0;j<8;j++) b=(b<<1)|bits[k+j]; dcw.push(b); }
-    const dBlocks=[], eBlocks=[]; let p=0;
-    for(const [count,per] of blocks) for(let c=0;c<count;c++){ const blk=dcw.slice(p,p+per); p+=per; dBlocks.push(blk); eBlocks.push(rsEncode(blk,ecLen)); }
-    const stream=[]; const maxD=Math.max(...dBlocks.map(b=>b.length));
-    for(let k=0;k<maxD;k++) for(const b of dBlocks) if(k<b.length) stream.push(b[k]);
-    for(let k=0;k<ecLen;k++) for(const b of eBlocks) stream.push(b[k]);
-    const dataBits=[]; for(const cwv of stream) for(let b=7;b>=0;b--) dataBits.push((cwv>>b)&1);
-    const mat=Array.from({length:size},()=>new Array(size).fill(0));
-    const res=Array.from({length:size},()=>new Array(size).fill(false));
-    const setF=(r,c,v)=>{ if(r<0||c<0||r>=size||c>=size) return; mat[r][c]=v?1:0; res[r][c]=true; };
-    const finder=(r,c)=>{ for(let dr=-1;dr<=7;dr++) for(let dc=-1;dc<=7;dc++){ const ring=dr>=0&&dr<=6&&dc>=0&&dc<=6&&(dr===0||dr===6||dc===0||dc===6), core=dr>=2&&dr<=4&&dc>=2&&dc<=4; setF(r+dr,c+dc,ring||core); } };
-    finder(0,0); finder(0,size-7); finder(size-7,0);
-    for(let k=8;k<size-8;k++){ if(!res[6][k]) setF(6,k,k%2===0); if(!res[k][6]) setF(k,6,k%2===0); }
-    const ap=ALIGN[version];
-    for(const r of ap) for(const c of ap){ if((r<=7&&c<=7)||(r<=7&&c>=size-8)||(r>=size-8&&c<=7)) continue;
-      for(let dr=-2;dr<=2;dr++) for(let dc=-2;dc<=2;dc++) setF(r+dr,c+dc,Math.max(Math.abs(dr),Math.abs(dc))!==1); }
-    setF(size-8,8,true); // dark module
-    for(let k=0;k<9;k++){ res[8][k]=true; res[k][8]=true; }
-    for(let k=0;k<8;k++){ res[8][size-1-k]=true; res[size-1-k][8]=true; }
-    if(version>=7) for(let a=0;a<6;a++) for(let b=0;b<3;b++){ res[size-11+b][a]=true; res[a][size-11+b]=true; }
-    let idx=0;
-    for(let right=size-1;right>=1;right-=2){ if(right===6) right=5;
-      for(let vert=0;vert<size;vert++){ for(let j=0;j<2;j++){ const col=right-j, up=((right+1)&2)===0, row=up?size-1-vert:vert;
-        if(!res[row][col]) mat[row][col]= idx<dataBits.length?dataBits[idx++]:0; } } }
-    const maskFn=[(r,c)=>(r+c)%2===0,(r,c)=>r%2===0,(r,c)=>c%3===0,(r,c)=>(r+c)%3===0,(r,c)=>(((r>>1)+Math.floor(c/3))%2)===0,(r,c)=>((r*c)%2+(r*c)%3)===0,(r,c)=>(((r*c)%2+(r*c)%3)%2)===0,(r,c)=>(((r+c)%2+(r*c)%3)%2)===0];
-    const placeFmt=(m,mask)=>{ const f=FMT[mask], gb=i=>(f>>i)&1;
-      for(let i=0;i<=5;i++) m[i][8]=gb(i);
-      m[7][8]=gb(6); m[8][8]=gb(7); m[8][7]=gb(8);
-      for(let i=9;i<15;i++) m[8][14-i]=gb(i);
-      for(let i=0;i<8;i++) m[8][size-1-i]=gb(i);
-      for(let i=8;i<15;i++) m[size-15+i][8]=gb(i);
-      m[size-8][8]=1;
-      if(version>=7){ const vf=VER[version]; for(let i=0;i<18;i++){ const bit=(vf>>i)&1, a=Math.floor(i/3), b=i%3; m[size-11+b][a]=bit; m[a][size-11+b]=bit; } } };
-    const apply=(mask)=>{ const m=mat.map(r=>r.slice());
-      for(let r=0;r<size;r++) for(let c=0;c<size;c++) if(!res[r][c] && maskFn[mask](r,c)) m[r][c]^=1;
-      placeFmt(m,mask); return m; };
-    const penalty=(m)=>{ let s=0;
-      for(let r=0;r<size;r++){ let run=1; for(let c=1;c<size;c++){ if(m[r][c]===m[r][c-1]){ if(++run===5)s+=3; else if(run>5)s++; } else run=1; } }
-      for(let c=0;c<size;c++){ let run=1; for(let r=1;r<size;r++){ if(m[r][c]===m[r-1][c]){ if(++run===5)s+=3; else if(run>5)s++; } else run=1; } }
-      for(let r=0;r<size-1;r++) for(let c=0;c<size-1;c++){ const v=m[r][c]; if(v===m[r][c+1]&&v===m[r+1][c]&&v===m[r+1][c+1]) s+=3; }
-      let dark=0; for(let r=0;r<size;r++) for(let c=0;c<size;c++) dark+=m[r][c];
-      s+=Math.floor(Math.abs(dark/(size*size)*100-50)/5)*10;
-      return s; };
-    let best=null, bp=Infinity;
-    for(let mask=0;mask<8;mask++){ const m=apply(mask), pen=penalty(m); if(pen<bp){ bp=pen; best=m; } }
-    return {matrix:best,size};
-  }
-  return {encode};
-})();
+// base64 helpers, JSON<->YAML and the QR encoder are imported from ./lib.js (top of module).
 
 // ---------- tools ----------
 const tools = [];
@@ -898,7 +762,7 @@ tool({ id:'qr', emoji:'🔳', name:'QR code', blurb:'Generate a scannable QR cod
     const cvs = el('canvas',{class:'qr'}), note = el('div',{class:'sub',style:'margin-top:10px'});
     const run=()=>{
       try{
-        const {matrix,size}=QR.encode(inp.value||' ');
+        const {matrix,size}=qrEncode(inp.value||' ');
         const quiet=4, scale=Math.max(2,Math.floor(320/(size+quiet*2))), dim=(size+quiet*2)*scale;
         cvs.width=dim; cvs.height=dim;
         const ctx=cvs.getContext('2d');
