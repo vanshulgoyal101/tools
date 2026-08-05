@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Tools — a private, offline developer toolbox</title>
+<meta name="description" content="A dozen everyday developer utilities — JSON, Base64, JWT, hashing, UUIDs, timestamps and more — that run 100% in your browser. Nothing is ever uploaded. Works offline.">
+<link rel="canonical" href="https://tools.vanshul.com/">
+<meta property="og:title" content="Tools — a private, offline developer toolbox">
+<meta property="og:description" content="Everyday dev utilities that run entirely in your browser. Nothing is uploaded. Works offline.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://tools.vanshul.com/">
+<meta name="twitter:card" content="summary">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%B0%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#0c0d12; --panel:#14161d; --panel-2:#191c25; --line:#262a36;
+    --text:#f2f4f9; --muted:#949cb0; --accent:#7c9cff; --good:#34d399; --bad:#fb7185;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{overflow-x:hidden}
+  body{
+    margin:0;background:radial-gradient(1200px 600px at 80% -10%,#15181f,var(--bg));
+    color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    min-height:100vh;-webkit-text-size-adjust:100%;
+  }
+  a{color:var(--accent)}
+  .layout{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+  aside{border-right:1px solid var(--line);padding:20px 14px;position:sticky;top:0;height:100vh;overflow:auto}
+  .brand{font-weight:700;font-size:1.25rem;letter-spacing:-.02em;padding:6px 10px 12px;display:flex;align-items:center;gap:8px}
+  .brand small{display:block;color:var(--muted);font-weight:400;font-size:.72rem;letter-spacing:.02em}
+  nav a{display:block;padding:9px 12px;border-radius:9px;color:var(--text);text-decoration:none;font-size:.92rem}
+  nav a:hover{background:var(--panel)}
+  nav a.active{background:var(--panel-2);color:var(--accent);font-weight:600}
+  main{padding:32px clamp(16px,4vw,44px);max-width:900px}
+  h1{margin:0 0 4px;font-size:clamp(1.4rem,4vw,2rem);letter-spacing:-.02em}
+  .sub{color:var(--muted);margin:0 0 22px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;text-decoration:none;color:var(--text);display:block;transition:border-color .15s}
+  .tile:hover{border-color:var(--accent)}
+  .tile .emoji{font-size:1.5rem}
+  .tile h3{margin:8px 0 4px;font-size:1.02rem}
+  .tile p{margin:0;color:var(--muted);font-size:.85rem}
+  label.small{display:block;color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;margin:14px 0 6px}
+  textarea,input[type=text],input[type=number],select{
+    width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;color:var(--text);
+    padding:12px 14px;font-family:var(--mono);font-size:.95rem;resize:vertical;
+  }
+  textarea:focus,input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,156,255,.14)}
+  textarea{min-height:120px}
+  .btnrow{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+  button.btn{background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:9px 15px;font-size:.9rem;cursor:pointer}
+  button.btn:hover{border-color:var(--accent);color:var(--accent)}
+  button.btn.primary{background:var(--accent);border-color:var(--accent);color:#0c0d12;font-weight:600}
+  .out{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;font-family:var(--mono);font-size:.9rem;white-space:pre-wrap;word-break:break-word;min-height:44px}
+  .out.err{color:var(--bad)}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-family:var(--mono);font-size:.9rem}
+  .kv .k{color:var(--muted)}
+  .pill{display:inline-block;background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:.8rem;color:var(--muted);margin:2px 4px 2px 0}
+  .swatch{width:100%;height:64px;border-radius:10px;border:1px solid var(--line);margin-top:8px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .privacy{margin-top:26px;color:var(--muted);font-size:.82rem;border-top:1px solid var(--line);padding-top:16px}
+  .mobile-nav{display:none}
+  ins{background:rgba(52,211,153,.18);text-decoration:none}
+  del{background:rgba(251,113,133,.18);text-decoration:none}
+  @media(max-width:720px){
+    .layout{grid-template-columns:1fr}
+    aside{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line)}
+    nav{display:flex;flex-wrap:wrap;gap:4px}
+    nav a{font-size:.85rem;padding:7px 10px}
+    .two{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside>
+    <div class="brand">🧰 <span>Tools<small>runs in your browser</small></span></div>
+    <nav id="nav"></nav>
+  </aside>
+  <main id="main"></main>
+</div>
+
+<script type="module">
+// ---------- helpers ----------
+const el = (tag, attrs={}, ...kids)=>{
+  const n = document.createElement(tag);
+  for(const [k,v] of Object.entries(attrs)){
+    if(k === 'class') n.className = v;
+    else if(k === 'html') n.innerHTML = v;
+    else if(k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for(const kid of kids) n.append(kid?.nodeType ? kid : document.createTextNode(kid ?? ''));
+  return n;
+};
+const copy = async (text, btn)=>{
+  try{ await navigator.clipboard.writeText(text); if(btn){const t=btn.textContent;btn.textContent='Copied ✓';setTimeout(()=>btn.textContent=t,1200);} }
+  catch{ /* clipboard blocked */ }
+};
+function field(labelText, node){
+  const wrap = el('div');
+  wrap.append(el('label',{class:'small'},labelText), node);
+  return wrap;
+}
+function outputBox(){ return el('div',{class:'out'}); }
+
+// ---------- tools ----------
+const tools = [];
+const tool = (t)=>tools.push(t);
+
+// JSON
+tool({ id:'json', emoji:'{ }', name:'JSON formatter', blurb:'Pretty-print, minify & validate JSON.',
+  render(root){
+    const inp = el('textarea',{placeholder:'{"paste":"json here"}'});
+    const out = outputBox();
+    const indent = el('select',{},
+      el('option',{value:'2'},'2 spaces'),
+      el('option',{value:'4'},'4 spaces'),
+      el('option',{value:'\t'},'Tab'));
+    const run = (min)=>{
+      try{
+        const val = JSON.parse(inp.value || 'null');
+        out.classList.remove('err');
+        out.textContent = min ? JSON.stringify(val) : JSON.stringify(val, null, indent.value==='\t'?'\t':Number(indent.value));
+      }catch(e){ out.classList.add('err'); out.textContent = 'Invalid JSON: '+e.message; }
+    };
+    inp.addEventListener('input',()=>run(false));
+    root.append(
+      field('Input', inp),
+      field('Indent', indent),
+      el('div',{class:'btnrow'},
+        el('button',{class:'btn primary',onclick:()=>run(false)},'Format'),
+        el('button',{class:'btn',onclick:()=>run(true)},'Minify'),
+        el('button',{class:'btn',onclick:(e)=>copy(out.textContent,e.target)},'Copy')),
+      field('Output', out));
+  }});
+
+// Base64
+tool({ id:'base64', emoji:'📦', name:'Base64', blurb:'Encode & decode Base64 (UTF-8 safe).',
+  render(root){
+    const inp = el('textarea',{placeholder:'Text or Base64…'});
+    const out = outputBox();
+    const enc = ()=>{ try{ out.classList.remove('err'); out.textContent = btoa(unescape(encodeURIComponent(inp.value))); }catch(e){ out.classList.add('err'); out.textContent='Cannot encode'; } };
+    const dec = ()=>{ try{ out.classList.remove('err'); out.textContent = decodeURIComponent(escape(atob(inp.value.trim()))); }catch(e){ out.classList.add('err'); out.textContent='Not valid Base64'; } };
+    root.append(field('Input', inp),
+      el('div',{class:'btnrow'},
+        el('button',{class:'btn primary',onclick:enc},'Encode →'),
+        el('button',{class:'btn',onclick:dec},'← Decode'),
+        el('button',{class:'btn',onclick:(e)=>copy(out.textContent,e.target)},'Copy')),
+      field('Output', out));
+  }});
+
+// URL encode
+tool({ id:'url', emoji:'🔗', name:'URL encode', blurb:'Encode / decode URL components & query strings.',
+  render(root){
+    const inp = el('textarea',{placeholder:'https://example.com/?q=hello world'});
+    const out = outputBox();
+    root.append(field('Input', inp),
+      el('div',{class:'btnrow'},
+        el('button',{class:'btn primary',onclick:()=>{out.textContent=encodeURIComponent(inp.value);}},'Encode'),
+        el('button',{class:'btn',onclick:()=>{try{out.classList.remove('err');out.textContent=decodeURIComponent(inp.value);}catch{out.classList.add('err');out.textContent='Malformed encoding';}}},'Decode'),
+        el('button',{class:'btn',onclick:(e)=>copy(out.textContent,e.target)},'Copy')),
+      field('Output', out));
+  }});
+
+// JWT decode
+tool({ id:'jwt', emoji:'🪪', name:'JWT decoder', blurb:'Inspect a JSON Web Token (no signature check).',
+  render(root){
+    const inp = el('textarea',{placeholder:'eyJhbGci... .eyJzdWI... .signature'});
+    const head = outputBox(), payload = outputBox(), meta = el('div',{class:'kv'});
+    const b64url = (s)=>{ s=s.replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4)s+='='; return decodeURIComponent(escape(atob(s))); };
+    const run = ()=>{
+      const parts = inp.value.trim().split('.');
+      meta.innerHTML='';
+      if(parts.length<2){ head.classList.add('err'); head.textContent='Not a JWT (need header.payload.signature)'; payload.textContent=''; return; }
+      try{
+        const h = JSON.parse(b64url(parts[0])), p = JSON.parse(b64url(parts[1]));
+        head.classList.remove('err');
+        head.textContent = JSON.stringify(h,null,2);
+        payload.textContent = JSON.stringify(p,null,2);
+        const add=(k,v)=>meta.append(el('div',{class:'k'},k),el('div',{},v));
+        if(p.exp) add('Expires', new Date(p.exp*1000).toLocaleString()+(p.exp*1000<Date.now()?' (expired)':''));
+        if(p.iat) add('Issued', new Date(p.iat*1000).toLocaleString());
+        if(p.iss) add('Issuer', String(p.iss));
+        if(p.sub) add('Subject', String(p.sub));
+      }catch(e){ head.classList.add('err'); head.textContent='Cannot decode: '+e.message; payload.textContent=''; }
+    };
+    inp.addEventListener('input',run);
+    root.append(field('Token', inp),
+      el('div',{class:'two'}, field('Header', head), field('Payload', payload)),
+      field('Claims', meta));
+  }});
+
+// Hash
+tool({ id:'hash', emoji:'#️⃣', name:'Hash', blurb:'SHA-256 / SHA-1 / SHA-512 of any text.',
+  render(root){
+    const inp = el('textarea',{placeholder:'Text to hash…'});
+    const box = el('div',{class:'kv'});
+    const run = async ()=>{
+      box.innerHTML='';
+      const data = new TextEncoder().encode(inp.value);
+      for(const alg of ['SHA-1','SHA-256','SHA-512']){
+        const buf = await crypto.subtle.digest(alg, data);
+        const hex = [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+        box.append(el('div',{class:'k'},alg), el('div',{onclick:(e)=>copy(hex,e.target),title:'click to copy',style:'cursor:pointer;word-break:break-all'},hex));
+      }
+    };
+    inp.addEventListener('input',run);
+    root.append(field('Input', inp), field('Digests (click to copy)', box));
+    run();
+  }});
+
+// UUID
+tool({ id:'uuid', emoji:'🆔', name:'UUID', blurb:'Generate random v4 UUIDs.',
+  render(root){
+    const count = el('input',{type:'number',value:'5',min:'1',max:'100'});
+    const out = outputBox();
+    const gen = ()=>{ const n=Math.min(100,Math.max(1,Number(count.value)||1)); out.textContent = Array.from({length:n},()=>crypto.randomUUID()).join('\n'); };
+    root.append(field('How many', count),
+      el('div',{class:'btnrow'},
+        el('button',{class:'btn primary',onclick:gen},'Generate'),
+        el('button',{class:'btn',onclick:(e)=>copy(out.textContent,e.target)},'Copy')),
+      field('UUIDs', out));
+    gen();
+  }});
+
+// Timestamp
+tool({ id:'time', emoji:'🕑', name:'Timestamp', blurb:'Convert between Unix time and dates.',
+  render(root){
+    const ts = el('input',{type:'text',placeholder:'1700000000 or ms'});
+    const human = el('input',{type:'text',placeholder:'2023-11-14T22:13:20Z'});
+    const box = el('div',{class:'kv'});
+    const show = (d)=>{
+      box.innerHTML='';
+      if(isNaN(d)){ box.append(el('div',{class:'k'},'—'), el('div',{},'invalid date')); return; }
+      const add=(k,v)=>box.append(el('div',{class:'k'},k),el('div',{onclick:(e)=>copy(v,e.target),style:'cursor:pointer'},v));
+      add('Unix (s)', String(Math.floor(d.getTime()/1000)));
+      add('Unix (ms)', String(d.getTime()));
+      add('ISO 8601', d.toISOString());
+      add('Local', d.toLocaleString());
+      add('UTC', d.toUTCString());
+    };
+    ts.addEventListener('input',()=>{ let v=Number(ts.value.trim()); if(!v) return; if(ts.value.trim().length<=11) v*=1000; show(new Date(v)); });
+    human.addEventListener('input',()=>{ const d=new Date(human.value.trim()); show(d); });
+    root.append(
+      el('div',{class:'btnrow'}, el('button',{class:'btn primary',onclick:()=>show(new Date())},'Now')),
+      field('From Unix timestamp', ts), field('From date string', human), field('Result (click to copy)', box));
+    show(new Date());
+  }});
+
+// Color
+tool({ id:'color', emoji:'🎨', name:'Color', blurb:'Convert HEX ⇄ RGB ⇄ HSL.',
+  render(root){
+    const inp = el('input',{type:'text',value:'#7c9cff'});
+    const picker = el('input',{type:'color',value:'#7c9cff',style:'width:52px;height:40px;padding:2px;border-radius:8px;background:var(--panel-2);border:1px solid var(--line)'});
+    const sw = el('div',{class:'swatch'});
+    const box = el('div',{class:'kv'});
+    const parse = (str)=>{
+      str = str.trim();
+      let m;
+      if(m=/^#?([0-9a-f]{3})$/i.exec(str)){ const [r,g,b]=m[1].split('').map(c=>parseInt(c+c,16)); return {r,g,b}; }
+      if(m=/^#?([0-9a-f]{6})$/i.exec(str)){ const i=parseInt(m[1],16); return {r:(i>>16)&255,g:(i>>8)&255,b:i&255}; }
+      if(m=/^rgba?\(([^)]+)\)$/i.exec(str)){ const [r,g,b]=m[1].split(',').map(x=>parseInt(x)); return {r,g,b}; }
+      return null;
+    };
+    const toHsl = ({r,g,b})=>{ r/=255;g/=255;b/=255; const mx=Math.max(r,g,b),mn=Math.min(r,g,b); let h=0,s=0,l=(mx+mn)/2;
+      if(mx!==mn){ const d=mx-mn; s=l>.5?d/(2-mx-mn):d/(mx+mn);
+        h = mx===r ? (g-b)/d+(g<b?6:0) : mx===g ? (b-r)/d+2 : (r-g)/d+4; h*=60; }
+      return {h:Math.round(h),s:Math.round(s*100),l:Math.round(l*100)}; };
+    const hex = ({r,g,b})=>'#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');
+    const run = (str)=>{
+      const c = parse(str); box.innerHTML='';
+      if(!c){ box.append(el('div',{class:'k'},'—'),el('div',{},'unrecognised colour')); return; }
+      const h = hex(c), hsl = toHsl(c);
+      sw.style.background = h; picker.value = h;
+      const add=(k,v)=>box.append(el('div',{class:'k'},k),el('div',{onclick:(e)=>copy(v,e.target),style:'cursor:pointer'},v));
+      add('HEX', h); add('RGB', `rgb(${c.r}, ${c.g}, ${c.b})`); add('HSL', `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`);
+    };
+    inp.addEventListener('input',()=>run(inp.value));
+    picker.addEventListener('input',()=>{ inp.value=picker.value; run(picker.value); });
+    root.append(el('div',{class:'btnrow'}, picker), field('Colour (hex, rgb or hsl)', inp), sw, field('Conversions (click to copy)', box));
+    run(inp.value);
+  }});
+
+// Text stats + case
+tool({ id:'text', emoji:'🔤', name:'Text', blurb:'Word/char counts & case conversion.',
+  render(root){
+    const inp = el('textarea',{placeholder:'Paste text…'});
+    const stats = el('div',{}), out = outputBox();
+    const upd = ()=>{
+      const t = inp.value;
+      const words = (t.trim().match(/\S+/g)||[]).length;
+      const lines = t ? t.split(/\r\n|\r|\n/).length : 0;
+      stats.innerHTML='';
+      for(const [k,v] of [['Characters',t.length],['Words',words],['Lines',lines],['No spaces',t.replace(/\s/g,'').length]])
+        stats.append(el('span',{class:'pill'},`${k}: ${v}`));
+    };
+    inp.addEventListener('input',upd);
+    const set=(fn)=>()=>{ out.textContent = fn(inp.value); };
+    const title = (s)=>s.replace(/\w\S*/g,w=>w[0].toUpperCase()+w.slice(1).toLowerCase());
+    root.append(field('Input', inp), stats,
+      el('div',{class:'btnrow'},
+        el('button',{class:'btn',onclick:set(s=>s.toUpperCase())},'UPPER'),
+        el('button',{class:'btn',onclick:set(s=>s.toLowerCase())},'lower'),
+        el('button',{class:'btn',onclick:set(title)},'Title'),
+        el('button',{class:'btn',onclick:set(s=>s.replace(/\s+/g,' ').trim())},'Trim spaces'),
+        el('button',{class:'btn',onclick:(e)=>copy(out.textContent,e.target)},'Copy')),
+      field('Output', out));
+    upd();
+  }});
+
+// Diff
+tool({ id:'diff', emoji:'🔀', name:'Line diff', blurb:'Compare two blocks of text line-by-line.',
+  render(root){
+    const a = el('textarea',{placeholder:'Original'}), b = el('textarea',{placeholder:'Changed'});
+    const out = el('div',{class:'out'});
+    // Simple LCS over lines.
+    const diff = ()=>{
+      const A=a.value.split('\n'), B=b.value.split('\n');
+      const n=A.length,m=B.length, dp=Array.from({length:n+1},()=>new Array(m+1).fill(0));
+      for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)
+        dp[i][j]=A[i]===B[j]?dp[i+1][j+1]+1:Math.max(dp[i+1][j],dp[i][j+1]);
+      out.innerHTML=''; let i=0,j=0;
+      const line=(cls,txt)=>{ const d=el('div'); if(cls) d.append(el(cls,{},txt||' ')); else d.textContent=txt; out.append(d); };
+      while(i<n&&j<m){
+        if(A[i]===B[j]){ line(null,'  '+A[i]); i++; j++; }
+        else if(dp[i+1][j]>=dp[i][j+1]){ line('del','- '+A[i]); i++; }
+        else { line('ins','+ '+B[j]); j++; }
+      }
+      while(i<n) line('del','- '+A[i++]);
+      while(j<m) line('ins','+ '+B[j++]);
+      if(!out.children.length) out.textContent='(identical)';
+    };
+    a.addEventListener('input',diff); b.addEventListener('input',diff);
+    root.append(el('div',{class:'two'}, field('Original', a), field('Changed', b)), field('Diff', out));
+  }});
+
+// ---------- routing / shell ----------
+const nav = document.getElementById('nav');
+const main = document.getElementById('main');
+
+nav.append(el('a',{href:'#',class:'',onclick:(e)=>{e.preventDefault();location.hash='';}},'🏠 All tools'));
+for(const t of tools) nav.append(el('a',{href:'#'+t.id},`${t.emoji}  ${t.name}`));
+
+function renderHome(){
+  main.innerHTML='';
+  main.append(
+    el('h1',{},'A private developer toolbox'),
+    el('p',{class:'sub'},'Every tool runs entirely in your browser. Your data is never uploaded, and it all works offline.'));
+  const grid = el('div',{class:'grid'});
+  for(const t of tools)
+    grid.append(el('a',{class:'tile',href:'#'+t.id},
+      el('div',{class:'emoji'},t.emoji), el('h3',{},t.name), el('p',{},t.blurb)));
+  main.append(grid,
+    el('p',{class:'privacy'},'🔒 No analytics that read your input, no server round-trips for any conversion. Built by ',
+      el('a',{href:'https://vanshul.com'},'Vanshul'), '. ',
+      el('a',{href:'https://links.vanshul.com'},'More projects'), '.'));
+}
+
+function route(){
+  const id = location.hash.slice(1);
+  for(const a of nav.querySelectorAll('a')) a.classList.toggle('active', a.getAttribute('href')==='#'+id || (!id && a.textContent.includes('All tools')));
+  const t = tools.find(x=>x.id===id);
+  if(!t){ renderHome(); return; }
+  main.innerHTML='';
+  main.append(el('h1',{},`${t.emoji} ${t.name}`), el('p',{class:'sub'},t.blurb));
+  const root = el('div'); main.append(root);
+  t.render(root);
+  main.scrollTo?.(0,0); window.scrollTo(0,0);
+}
+window.addEventListener('hashchange',route);
+route();
+
+// Offline PWA
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>

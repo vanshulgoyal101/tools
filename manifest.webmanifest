@@ -1,0 +1,16 @@
+{
+  "name": "Tools — private developer toolbox",
+  "short_name": "Tools",
+  "description": "Everyday developer utilities that run entirely in your browser.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0c0d12",
+  "theme_color": "#0c0d12",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230c0d12'/%3E%3Ctext x='50' y='72' font-size='60' text-anchor='middle'%3E%F0%9F%A7%B0%3C/text%3E%3C/svg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
