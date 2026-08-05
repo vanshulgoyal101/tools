@@ -63,9 +63,11 @@
   .swatch{width:100%;height:64px;border-radius:10px;border:1px solid var(--line);margin-top:8px}
   .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .privacy{margin-top:26px;color:var(--muted);font-size:.82rem;border-top:1px solid var(--line);padding-top:16px}
-  .mobile-nav{display:none}
   ins{background:rgba(52,211,153,.18);text-decoration:none}
   del{background:rgba(251,113,133,.18);text-decoration:none}
+  mark{background:rgba(124,156,255,.35);color:var(--text);border-radius:3px;padding:0 1px}
+  canvas.qr{max-width:100%;height:auto;background:#fff;border-radius:12px;image-rendering:pixelated;margin-top:6px}
+  .err{color:var(--bad)}
   @media(max-width:720px){
     .layout{grid-template-columns:1fr}
     aside{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line)}
@@ -98,15 +100,160 @@ const el = (tag, attrs={}, ...kids)=>{
   return n;
 };
 const copy = async (text, btn)=>{
-  try{ await navigator.clipboard.writeText(text); if(btn){const t=btn.textContent;btn.textContent='Copied ✓';setTimeout(()=>btn.textContent=t,1200);} }
-  catch{ /* clipboard blocked */ }
+  const flash=(msg)=>{ if(!btn) return; const t=btn.textContent; btn.textContent=msg; setTimeout(()=>btn.textContent=t,1200); };
+  try{ await navigator.clipboard.writeText(text); flash('Copied ✓'); }
+  catch{ flash('Copy failed'); }
 };
+let _fid = 0;
 function field(labelText, node){
   const wrap = el('div');
-  wrap.append(el('label',{class:'small'},labelText), node);
+  if(node && !node.id && /^(INPUT|TEXTAREA|SELECT)$/.test(node.tagName)) node.id = 'f'+(++_fid);
+  const lbl = el('label',{class:'small'}, labelText);
+  if(node?.id) lbl.setAttribute('for', node.id);
+  wrap.append(lbl, node);
   return wrap;
 }
 function outputBox(){ return el('div',{class:'out'}); }
+
+// UTF-8 <-> bytes <-> base64 (no deprecated escape/unescape).
+const bytesToB64 = (bytes)=>{ let bin=''; for(const b of bytes) bin+=String.fromCharCode(b); return btoa(bin); };
+const b64ToBytes = (b64)=>{ const bin=atob(b64); const out=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i); return out; };
+const encU8 = (str)=>new TextEncoder().encode(str);
+const decU8 = (bytes)=>new TextDecoder().decode(bytes);
+
+// ---------- JSON <-> YAML (block style; parser handles the common subset) ----------
+function jsonToYaml(value){
+  const q=(s)=>{ if(s==='') return '""';
+    if(/^[\s>|@`"'%#&*!?{}\[\],]/.test(s) || /:(\s|$)/.test(s) || /\s#/.test(s) ||
+       /^(true|false|null|~|yes|no|on|off)$/i.test(s) || (/^[+-]?(\d|\.\d)/.test(s) && !isNaN(Number(s))))
+      return JSON.stringify(s);
+    return s; };
+  const scalar=(v)=>{ if(v===null) return 'null'; if(Array.isArray(v)) return '[]'; if(typeof v==='object') return '{}'; return typeof v==='string'?q(v):String(v); };
+  const lines=[];
+  const walk=(v,ind)=>{ const pad='  '.repeat(ind);
+    if(Array.isArray(v)){ if(!v.length){ lines.push(pad+'[]'); return; }
+      for(const it of v){ if(it!==null && typeof it==='object' && (Array.isArray(it)?it.length:Object.keys(it).length)){ lines.push(pad+'-'); walk(it,ind+1); } else lines.push(pad+'- '+scalar(it)); } }
+    else if(v!==null && typeof v==='object'){ const ks=Object.keys(v); if(!ks.length){ lines.push(pad+'{}'); return; }
+      for(const k of ks){ const val=v[k];
+        if(val!==null && typeof val==='object' && (Array.isArray(val)?val.length:Object.keys(val).length)){ lines.push(pad+q(k)+':'); walk(val,ind+1); }
+        else lines.push(pad+q(k)+': '+scalar(val)); } }
+    else lines.push(pad+scalar(v)); };
+  walk(value,0);
+  return lines.join('\n');
+}
+function yamlToJson(text){
+  const lines=text.replace(/\t/g,'  ').split('\n').map(l=>l.replace(/\s+#.*$/,'')).filter(l=>l.trim()!=='' && !/^\s*#/.test(l));
+  let i=0;
+  const indentOf=l=>l.match(/^ */)[0].length;
+  const flowFix=s=>s.replace(/([{,\[]\s*)([A-Za-z_][\w -]*?)(\s*:)/g,'$1"$2"$3');
+  const scalar=(s)=>{ s=s.trim();
+    if(s===''||s==='~'||s==='null') return null;
+    if(s==='true') return true; if(s==='false') return false;
+    if(s[0]==='"'&&s.endsWith('"')){ try{ return JSON.parse(s); }catch{ return s.slice(1,-1); } }
+    if(s[0]==="'"&&s.endsWith("'")) return s.slice(1,-1).replace(/''/g,"'");
+    if(s[0]==='['||s[0]==='{'){ try{ return JSON.parse(flowFix(s)); }catch{ return s; } }
+    if(/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(s)) return Number(s);
+    return s; };
+  const parse=(min)=>{
+    const first=lines[i];
+    if(!first.trim().startsWith('- ') && first.trim()!=='-' && first.indexOf(':')<0){ i++; return scalar(first.trim()); }
+    if(first.trim().startsWith('- ')||first.trim()==='-'){
+      const arr=[];
+      while(i<lines.length){ const l=lines[i], ind=indentOf(l), t=l.trim();
+        if(ind<min || !(t==='-'||t.startsWith('- '))) break;
+        const rest=t==='-'?'':t.slice(2); i++;
+        if(rest==='') arr.push(i<lines.length && indentOf(lines[i])>ind ? parse(ind+1) : null);
+        else if(/^[^:\n]+:(\s|$)/.test(rest)){ lines[i-1]=' '.repeat(ind+2)+rest; i--; arr.push(parse(ind+2)); }
+        else arr.push(scalar(rest)); }
+      return arr;
+    }
+    const obj={};
+    while(i<lines.length){ const l=lines[i], ind=indentOf(l), t=l.trim();
+      if(ind<min || t.startsWith('- ')) break;
+      const ci=t.indexOf(':'); if(ci<0){ i++; continue; }
+      const key=t.slice(0,ci).trim().replace(/^["']|["']$/g,''); const val=t.slice(ci+1).trim(); i++;
+      obj[key]= val==='' ? (i<lines.length && indentOf(lines[i])>ind ? parse(ind+1) : null) : scalar(val); }
+    return obj;
+  };
+  return lines.length?parse(0):null;
+}
+
+// ---------- QR encoder (byte mode, ECC level M, versions 1-10) ----------
+const QR=(()=>{
+  const EXP=new Array(512), LOG=new Array(256);
+  for(let i=0,x=1;i<255;i++){ EXP[i]=x; LOG[x]=i; x<<=1; if(x&0x100)x^=0x11d; }
+  for(let i=255;i<512;i++) EXP[i]=EXP[i-255];
+  const mul=(a,b)=>(a===0||b===0)?0:EXP[LOG[a]+LOG[b]];
+  const genPoly=(deg)=>{ let p=[1]; for(let i=0;i<deg;i++){ const np=new Array(p.length+1).fill(0);
+    for(let j=0;j<p.length;j++){ np[j]^=mul(p[j],EXP[i]); np[j+1]^=p[j]; } p=np; } return p; };
+  const rsEncode=(data,ecLen)=>{ const gen=genPoly(ecLen).reverse(), res=new Array(ecLen).fill(0);
+    for(const d of data){ const f=d^res[0]; res.shift(); res.push(0); if(f!==0) for(let i=0;i<ecLen;i++) res[i]^=mul(gen[i+1],f); }
+    return res; };
+  // level M: [dataCodewords, ecPerBlock, [[blockCount, dataPerBlock], ...]]
+  const M={1:[16,10,[[1,16]]],2:[28,16,[[1,28]]],3:[44,26,[[1,44]]],4:[64,18,[[2,32]]],5:[86,24,[[2,43]]],6:[108,16,[[4,27]]],7:[124,18,[[4,31]]],8:[154,22,[[2,38],[2,39]]],9:[182,22,[[3,36],[2,37]]],10:[216,26,[[4,43],[1,44]]]};
+  const ALIGN={1:[],2:[6,18],3:[6,22],4:[6,26],5:[6,30],6:[6,34],7:[6,22,38],8:[6,24,42],9:[6,26,46],10:[6,28,50]};
+  const FMT=[0x5412,0x5125,0x5E7C,0x5B4B,0x45F9,0x40CE,0x4F97,0x4AA0]; // level M format info per mask
+  const VER={7:0x07C94,8:0x085BC,9:0x09A99,10:0x0A4D3};
+  function encode(text){
+    const bytes=new TextEncoder().encode(text);
+    let version=0;
+    for(let v=1;v<=10;v++){ const cc=v>=10?16:8; if(4+cc+8*bytes.length <= M[v][0]*8){ version=v; break; } }
+    if(!version) throw new Error('Text too long — max ~'+(M[10][0]-3)+' bytes at this quality.');
+    const [dataCW,ecLen,blocks]=M[version], cc=version>=10?16:8, size=17+4*version;
+    const bits=[]; const put=(val,len)=>{ for(let b=len-1;b>=0;b--) bits.push((val>>b)&1); };
+    put(4,4); put(bytes.length,cc); for(const b of bytes) put(b,8);
+    const cap=dataCW*8; for(let k=0;k<4 && bits.length<cap;k++) bits.push(0);
+    while(bits.length%8) bits.push(0);
+    for(let pi=0; bits.length<cap; pi++) put(pi%2?0x11:0xEC,8);
+    const dcw=[]; for(let k=0;k<bits.length;k+=8){ let b=0; for(let j=0;j<8;j++) b=(b<<1)|bits[k+j]; dcw.push(b); }
+    const dBlocks=[], eBlocks=[]; let p=0;
+    for(const [count,per] of blocks) for(let c=0;c<count;c++){ const blk=dcw.slice(p,p+per); p+=per; dBlocks.push(blk); eBlocks.push(rsEncode(blk,ecLen)); }
+    const stream=[]; const maxD=Math.max(...dBlocks.map(b=>b.length));
+    for(let k=0;k<maxD;k++) for(const b of dBlocks) if(k<b.length) stream.push(b[k]);
+    for(let k=0;k<ecLen;k++) for(const b of eBlocks) stream.push(b[k]);
+    const dataBits=[]; for(const cwv of stream) for(let b=7;b>=0;b--) dataBits.push((cwv>>b)&1);
+    const mat=Array.from({length:size},()=>new Array(size).fill(0));
+    const res=Array.from({length:size},()=>new Array(size).fill(false));
+    const setF=(r,c,v)=>{ if(r<0||c<0||r>=size||c>=size) return; mat[r][c]=v?1:0; res[r][c]=true; };
+    const finder=(r,c)=>{ for(let dr=-1;dr<=7;dr++) for(let dc=-1;dc<=7;dc++){ const ring=dr>=0&&dr<=6&&dc>=0&&dc<=6&&(dr===0||dr===6||dc===0||dc===6), core=dr>=2&&dr<=4&&dc>=2&&dc<=4; setF(r+dr,c+dc,ring||core); } };
+    finder(0,0); finder(0,size-7); finder(size-7,0);
+    for(let k=8;k<size-8;k++){ if(!res[6][k]) setF(6,k,k%2===0); if(!res[k][6]) setF(k,6,k%2===0); }
+    const ap=ALIGN[version];
+    for(const r of ap) for(const c of ap){ if((r<=7&&c<=7)||(r<=7&&c>=size-8)||(r>=size-8&&c<=7)) continue;
+      for(let dr=-2;dr<=2;dr++) for(let dc=-2;dc<=2;dc++) setF(r+dr,c+dc,Math.max(Math.abs(dr),Math.abs(dc))!==1); }
+    setF(size-8,8,true); // dark module
+    for(let k=0;k<9;k++){ res[8][k]=true; res[k][8]=true; }
+    for(let k=0;k<8;k++){ res[8][size-1-k]=true; res[size-1-k][8]=true; }
+    if(version>=7) for(let a=0;a<6;a++) for(let b=0;b<3;b++){ res[size-11+b][a]=true; res[a][size-11+b]=true; }
+    let idx=0;
+    for(let right=size-1;right>=1;right-=2){ if(right===6) right=5;
+      for(let vert=0;vert<size;vert++){ for(let j=0;j<2;j++){ const col=right-j, up=((right+1)&2)===0, row=up?size-1-vert:vert;
+        if(!res[row][col]) mat[row][col]= idx<dataBits.length?dataBits[idx++]:0; } } }
+    const maskFn=[(r,c)=>(r+c)%2===0,(r,c)=>r%2===0,(r,c)=>c%3===0,(r,c)=>(r+c)%3===0,(r,c)=>(((r>>1)+Math.floor(c/3))%2)===0,(r,c)=>((r*c)%2+(r*c)%3)===0,(r,c)=>(((r*c)%2+(r*c)%3)%2)===0,(r,c)=>(((r+c)%2+(r*c)%3)%2)===0];
+    const placeFmt=(m,mask)=>{ const f=FMT[mask], gb=i=>(f>>i)&1;
+      for(let i=0;i<=5;i++) m[i][8]=gb(i);
+      m[7][8]=gb(6); m[8][8]=gb(7); m[8][7]=gb(8);
+      for(let i=9;i<15;i++) m[8][14-i]=gb(i);
+      for(let i=0;i<8;i++) m[8][size-1-i]=gb(i);
+      for(let i=8;i<15;i++) m[size-15+i][8]=gb(i);
+      m[size-8][8]=1;
+      if(version>=7){ const vf=VER[version]; for(let i=0;i<18;i++){ const bit=(vf>>i)&1, a=Math.floor(i/3), b=i%3; m[size-11+b][a]=bit; m[a][size-11+b]=bit; } } };
+    const apply=(mask)=>{ const m=mat.map(r=>r.slice());
+      for(let r=0;r<size;r++) for(let c=0;c<size;c++) if(!res[r][c] && maskFn[mask](r,c)) m[r][c]^=1;
+      placeFmt(m,mask); return m; };
+    const penalty=(m)=>{ let s=0;
+      for(let r=0;r<size;r++){ let run=1; for(let c=1;c<size;c++){ if(m[r][c]===m[r][c-1]){ if(++run===5)s+=3; else if(run>5)s++; } else run=1; } }
+      for(let c=0;c<size;c++){ let run=1; for(let r=1;r<size;r++){ if(m[r][c]===m[r-1][c]){ if(++run===5)s+=3; else if(run>5)s++; } else run=1; } }
+      for(let r=0;r<size-1;r++) for(let c=0;c<size-1;c++){ const v=m[r][c]; if(v===m[r][c+1]&&v===m[r+1][c]&&v===m[r+1][c+1]) s+=3; }
+      let dark=0; for(let r=0;r<size;r++) for(let c=0;c<size;c++) dark+=m[r][c];
+      s+=Math.floor(Math.abs(dark/(size*size)*100-50)/5)*10;
+      return s; };
+    let best=null, bp=Infinity;
+    for(let mask=0;mask<8;mask++){ const m=apply(mask), pen=penalty(m); if(pen<bp){ bp=pen; best=m; } }
+    return {matrix:best,size};
+  }
+  return {encode};
+})();
 
 // ---------- tools ----------
 const tools = [];
@@ -144,8 +291,8 @@ tool({ id:'base64', emoji:'📦', name:'Base64', blurb:'Encode & decode Base64 (
   render(root){
     const inp = el('textarea',{placeholder:'Text or Base64…'});
     const out = outputBox();
-    const enc = ()=>{ try{ out.classList.remove('err'); out.textContent = btoa(unescape(encodeURIComponent(inp.value))); }catch(e){ out.classList.add('err'); out.textContent='Cannot encode'; } };
-    const dec = ()=>{ try{ out.classList.remove('err'); out.textContent = decodeURIComponent(escape(atob(inp.value.trim()))); }catch(e){ out.classList.add('err'); out.textContent='Not valid Base64'; } };
+    const enc = ()=>{ try{ out.classList.remove('err'); out.textContent = bytesToB64(encU8(inp.value)); }catch(e){ out.classList.add('err'); out.textContent='Cannot encode'; } };
+    const dec = ()=>{ try{ out.classList.remove('err'); out.textContent = decU8(b64ToBytes(inp.value.trim())); }catch(e){ out.classList.add('err'); out.textContent='Not valid Base64'; } };
     root.append(field('Input', inp),
       el('div',{class:'btnrow'},
         el('button',{class:'btn primary',onclick:enc},'Encode →'),
@@ -172,11 +319,11 @@ tool({ id:'jwt', emoji:'🪪', name:'JWT decoder', blurb:'Inspect a JSON Web Tok
   render(root){
     const inp = el('textarea',{placeholder:'eyJhbGci... .eyJzdWI... .signature'});
     const head = outputBox(), payload = outputBox(), meta = el('div',{class:'kv'});
-    const b64url = (s)=>{ s=s.replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4)s+='='; return decodeURIComponent(escape(atob(s))); };
+    const b64url = (s)=>{ s=s.replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4)s+='='; return decU8(b64ToBytes(s)); };
     const run = ()=>{
       const parts = inp.value.trim().split('.');
       meta.innerHTML='';
-      if(parts.length<2){ head.classList.add('err'); head.textContent='Not a JWT (need header.payload.signature)'; payload.textContent=''; return; }
+      if(parts.length<2){ head.classList.add('err'); head.textContent='Not a JWT (need at least header.payload)'; payload.textContent=''; return; }
       try{
         const h = JSON.parse(b64url(parts[0])), p = JSON.parse(b64url(parts[1]));
         head.classList.remove('err');
@@ -214,17 +361,37 @@ tool({ id:'hash', emoji:'#️⃣', name:'Hash', blurb:'SHA-256 / SHA-1 / SHA-512
     run();
   }});
 
-// UUID
-tool({ id:'uuid', emoji:'🆔', name:'UUID', blurb:'Generate random v4 UUIDs.',
+// ID & random
+tool({ id:'id', emoji:'🆔', name:'ID & random', blurb:'UUID v4, ULID, nanoid, hex & passwords.',
   render(root){
+    const kind = el('select',{},
+      el('option',{value:'uuid'},'UUID v4'),
+      el('option',{value:'ulid'},'ULID (sortable)'),
+      el('option',{value:'nanoid'},'nanoid (21 chars)'),
+      el('option',{value:'hex'},'Random hex (32)'),
+      el('option',{value:'pass'},'Password (20)'));
     const count = el('input',{type:'number',value:'5',min:'1',max:'100'});
     const out = outputBox();
-    const gen = ()=>{ const n=Math.min(100,Math.max(1,Number(count.value)||1)); out.textContent = Array.from({length:n},()=>crypto.randomUUID()).join('\n'); };
-    root.append(field('How many', count),
+    const rand = (n)=>{ const a=new Uint8Array(n); crypto.getRandomValues(a); return a; };
+    const B32='0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // Crockford, for ULID
+    const ulid = ()=>{ let t=Date.now(), time=''; for(let i=0;i<10;i++){ time=B32[t%32]+time; t=Math.floor(t/32); }
+      const r=rand(16); let s=''; for(let i=0;i<16;i++) s+=B32[r[i]&31]; return time+s; };
+    const NANO='useandom-26T198340PX75pxJACKVERYMINDBUSHWOLF_GQZbfghjklqvwyzrict';
+    const nano = (n=21)=>{ const r=rand(n); let s=''; for(let i=0;i<n;i++) s+=NANO[r[i]&63]; return s; };
+    const PW='abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%^&*-_=+';
+    const pass = (n=20)=>{ const r=rand(n); let s=''; for(let i=0;i<n;i++) s+=PW[r[i]%PW.length]; return s; };
+    const hex = (n=16)=>[...rand(n)].map(b=>b.toString(16).padStart(2,'0')).join('');
+    const one = ()=>{ switch(kind.value){
+      case 'ulid': return ulid(); case 'nanoid': return nano();
+      case 'hex': return hex(16); case 'pass': return pass(20);
+      default: return crypto.randomUUID(); } };
+    const gen = ()=>{ const n=Math.min(100,Math.max(1,Number(count.value)||1)); out.textContent = Array.from({length:n},one).join('\n'); };
+    kind.addEventListener('change',gen); count.addEventListener('input',gen);
+    root.append(field('Type', kind), field('How many', count),
       el('div',{class:'btnrow'},
         el('button',{class:'btn primary',onclick:gen},'Generate'),
         el('button',{class:'btn',onclick:(e)=>copy(out.textContent,e.target)},'Copy')),
-      field('UUIDs', out));
+      field('Output', out));
     gen();
   }});
 
@@ -244,7 +411,14 @@ tool({ id:'time', emoji:'🕑', name:'Timestamp', blurb:'Convert between Unix ti
       add('Local', d.toLocaleString());
       add('UTC', d.toUTCString());
     };
-    ts.addEventListener('input',()=>{ let v=Number(ts.value.trim()); if(!v) return; if(ts.value.trim().length<=11) v*=1000; show(new Date(v)); });
+    ts.addEventListener('input',()=>{
+      const raw=ts.value.trim();
+      if(raw===''){ box.innerHTML=''; return; }
+      if(!/^-?\d+$/.test(raw)){ show(new Date(NaN)); return; }
+      let v=Number(raw);
+      if(Math.abs(v) < 1e11) v*=1000; // treat small magnitudes as seconds, large as ms
+      show(new Date(v));
+    });
     human.addEventListener('input',()=>{ const d=new Date(human.value.trim()); show(d); });
     root.append(
       el('div',{class:'btnrow'}, el('button',{class:'btn primary',onclick:()=>show(new Date())},'Now')),
@@ -264,7 +438,7 @@ tool({ id:'color', emoji:'🎨', name:'Color', blurb:'Convert HEX ⇄ RGB ⇄ HS
       let m;
       if(m=/^#?([0-9a-f]{3})$/i.exec(str)){ const [r,g,b]=m[1].split('').map(c=>parseInt(c+c,16)); return {r,g,b}; }
       if(m=/^#?([0-9a-f]{6})$/i.exec(str)){ const i=parseInt(m[1],16); return {r:(i>>16)&255,g:(i>>8)&255,b:i&255}; }
-      if(m=/^rgba?\(([^)]+)\)$/i.exec(str)){ const [r,g,b]=m[1].split(',').map(x=>parseInt(x)); return {r,g,b}; }
+      if(m=/^rgba?\(([^)]+)\)$/i.exec(str)){ const [r,g,b]=m[1].trim().split(/[\s,\/]+/).map(x=>parseInt(x)); return {r,g,b}; }
       return null;
     };
     const toHsl = ({r,g,b})=>{ r/=255;g/=255;b/=255; const mx=Math.max(r,g,b),mn=Math.min(r,g,b); let h=0,s=0,l=(mx+mn)/2;
@@ -320,8 +494,11 @@ tool({ id:'diff', emoji:'🔀', name:'Line diff', blurb:'Compare two blocks of t
     const out = el('div',{class:'out'});
     // Simple LCS over lines.
     const diff = ()=>{
+      out.classList.remove('err');
       const A=a.value.split('\n'), B=b.value.split('\n');
-      const n=A.length,m=B.length, dp=Array.from({length:n+1},()=>new Array(m+1).fill(0));
+      const n=A.length,m=B.length;
+      if(n*m > 4_000_000){ out.classList.add('err'); out.textContent='Too large to diff — keep it under a few thousand lines per side.'; return; }
+      const dp=Array.from({length:n+1},()=>new Array(m+1).fill(0));
       for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)
         dp[i][j]=A[i]===B[j]?dp[i+1][j+1]+1:Math.max(dp[i+1][j],dp[i][j+1]);
       out.innerHTML=''; let i=0,j=0;
@@ -339,11 +516,289 @@ tool({ id:'diff', emoji:'🔀', name:'Line diff', blurb:'Compare two blocks of t
     root.append(el('div',{class:'two'}, field('Original', a), field('Changed', b)), field('Diff', out));
   }});
 
+// Regex tester
+tool({ id:'regex', emoji:'🔎', name:'Regex tester', blurb:'Live matches, groups & replace preview.',
+  render(root){
+    const pat = el('input',{type:'text',placeholder:'\\b\\w+@\\w+\\.\\w+\\b'});
+    const flags = el('input',{type:'text',value:'g',placeholder:'gimsuy'});
+    const test = el('textarea',{placeholder:'Test string…'});
+    const rep = el('input',{type:'text',placeholder:'Replacement (use $1, $<name>)'});
+    const hl = el('div',{class:'out'}), groups = el('div',{class:'kv'}), repout = outputBox();
+    const run = ()=>{
+      hl.classList.remove('err'); groups.innerHTML=''; hl.innerHTML='';
+      try{ new RegExp(pat.value, flags.value); }
+      catch(e){ hl.classList.add('err'); hl.textContent='Invalid regex: '+e.message; repout.textContent=''; return; }
+      const s = test.value;
+      const g = new RegExp(pat.value, flags.value.includes('g')?flags.value:flags.value+'g');
+      let last=0, m, count=0, first=null;
+      while((m=g.exec(s))){
+        if(!first) first=m;
+        hl.append(document.createTextNode(s.slice(last,m.index)), el('mark',{},m[0]||''));
+        last=m.index+(m[0].length||0);
+        if(m[0]==='') g.lastIndex++;
+        if(++count>10000) break;
+      }
+      hl.append(document.createTextNode(s.slice(last)));
+      if(!count) hl.append(el('span',{style:'color:var(--muted)'},'(no matches)'));
+      const add=(k,v)=>groups.append(el('div',{class:'k'},k),el('div',{},v??''));
+      add('Matches', String(count));
+      if(first){ first.forEach((val,i)=> i>0 && add('Group '+i, val));
+        if(first.groups) for(const [k,v] of Object.entries(first.groups)) add('$<'+k+'>', v); }
+      try{ repout.classList.remove('err'); repout.textContent = rep.value ? s.replace(g, rep.value) : '(add a replacement)'; }
+      catch(e){ repout.classList.add('err'); repout.textContent=e.message; }
+    };
+    [pat,flags,test,rep].forEach(x=>x.addEventListener('input',run));
+    root.append(el('div',{class:'two'}, field('Pattern', pat), field('Flags', flags)),
+      field('Test string', test), field('Matches (highlighted)', hl),
+      field('Groups (first match)', groups), field('Replacement', rep), field('Replace result', repout));
+    run();
+  }});
+
+// Token & cost estimator
+tool({ id:'tokens', emoji:'🎟️', name:'Token & cost', blurb:'Approx LLM tokens & $ cost for text.',
+  render(root){
+    const inp = el('textarea',{placeholder:'Paste a prompt or document…'});
+    const model = el('select',{});
+    const PRICES = {'GPT-4o':2.5,'GPT-4o mini':0.15,'o3':2,'Claude Opus':15,'Claude Sonnet':3,'Gemini 1.5 Pro':1.25,'Gemini Flash':0.075};
+    for(const k of Object.keys(PRICES)) model.append(el('option',{value:k},k));
+    const box = el('div',{class:'kv'});
+    const est = ()=>{
+      const t=inp.value, chars=t.length, words=(t.trim().match(/\S+/g)||[]).length;
+      const tokens=Math.round((chars/4 + words/0.75)/2)||0;
+      box.innerHTML='';
+      const add=(k,v)=>box.append(el('div',{class:'k'},k),el('div',{},v));
+      add('Characters', chars.toLocaleString());
+      add('Words', words.toLocaleString());
+      add('Est. tokens', '~'+tokens.toLocaleString());
+      add('Input cost ('+model.value+')', '$'+(tokens/1e6*PRICES[model.value]).toFixed(5));
+      add('Note', 'Rough heuristic — not a real tokenizer. Prices are approximate.');
+    };
+    inp.addEventListener('input',est); model.addEventListener('change',est);
+    root.append(field('Text', inp), field('Model (input price / 1M tokens)', model), field('Estimate', box));
+    est();
+  }});
+
+// Cron explainer
+tool({ id:'cron', emoji:'⏰', name:'Cron', blurb:'Explain a cron expression & preview next runs.',
+  render(root){
+    const inp = el('input',{type:'text',value:'*/5 9-17 * * 1-5'});
+    const desc = outputBox(), box = el('div',{class:'out'});
+    const parseField=(f,min,max)=>{ const set=new Set();
+      for(const part of f.split(',')){ let [range,stepS]=part.split('/'); const step=stepS?parseInt(stepS):1;
+        let lo,hi;
+        if(range==='*'){ lo=min; hi=max; }
+        else if(range.includes('-')){ const [a,b]=range.split('-').map(Number); lo=a; hi=b; }
+        else { lo=hi=parseInt(range); }
+        if(isNaN(lo)||isNaN(hi)||isNaN(step)||step<1) throw new Error('Bad field: '+f);
+        for(let v=lo;v<=hi;v+=step) set.add(v); }
+      return set; };
+    const run=()=>{
+      box.innerHTML=''; desc.classList.remove('err');
+      const parts=inp.value.trim().split(/\s+/);
+      if(parts.length!==5){ desc.classList.add('err'); desc.textContent='Need exactly 5 fields: minute hour day-of-month month day-of-week'; return; }
+      let mins,hrs,doms,mons,dows;
+      try{ mins=parseField(parts[0],0,59); hrs=parseField(parts[1],0,23); doms=parseField(parts[2],1,31);
+        mons=parseField(parts[3],1,12); dows=parseField(parts[4].replace(/\b7\b/g,'0'),0,6); }
+      catch(e){ desc.classList.add('err'); desc.textContent=e.message; return; }
+      desc.textContent = `Runs at minute [${parts[0]}], hour [${parts[1]}], day-of-month [${parts[2]}], month [${parts[3]}], weekday [${parts[4]}].`;
+      const domStar=parts[2]==='*', dowStar=parts[4]==='*';
+      const d=new Date(); d.setSeconds(0,0); d.setMinutes(d.getMinutes()+1);
+      const runs=[]; let guard=0;
+      while(runs.length<6 && guard++<535680){
+        if(mons.has(d.getMonth()+1) && hrs.has(d.getHours()) && mins.has(d.getMinutes())){
+          const dayOk = (domStar||dowStar) ? (doms.has(d.getDate())&&dows.has(d.getDay())) : (doms.has(d.getDate())||dows.has(d.getDay()));
+          if(dayOk) runs.push(new Date(d));
+        }
+        d.setMinutes(d.getMinutes()+1);
+      }
+      for(const r of runs) box.append(el('div',{},r.toLocaleString()));
+      if(!runs.length) box.textContent='No upcoming runs within a year.';
+    };
+    inp.addEventListener('input',run);
+    root.append(field('Cron expression', inp), field('Summary', desc), field('Next runs (local time)', box));
+    run();
+  }});
+
+// JSON <-> YAML
+tool({ id:'yaml', emoji:'🔁', name:'JSON ⇄ YAML', blurb:'Convert between JSON and YAML (common subset).',
+  render(root){
+    const inp = el('textarea',{placeholder:'Paste JSON or YAML…'});
+    const out = outputBox();
+    const toYaml=()=>{ try{ out.classList.remove('err'); out.textContent=jsonToYaml(JSON.parse(inp.value||'null')); }
+      catch(e){ out.classList.add('err'); out.textContent='Invalid JSON: '+e.message; } };
+    const toJson=()=>{ try{ out.classList.remove('err'); out.textContent=JSON.stringify(yamlToJson(inp.value),null,2); }
+      catch(e){ out.classList.add('err'); out.textContent="Couldn't parse this YAML (subset parser): "+e.message; } };
+    root.append(field('Input', inp),
+      el('div',{class:'btnrow'},
+        el('button',{class:'btn primary',onclick:toYaml},'JSON → YAML'),
+        el('button',{class:'btn',onclick:toJson},'YAML → JSON'),
+        el('button',{class:'btn',onclick:(e)=>copy(out.textContent,e.target)},'Copy')),
+      field('Output', out));
+  }});
+
+// JSON tools (TypeScript / sort / query)
+tool({ id:'jsonts', emoji:'🧬', name:'JSON tools', blurb:'JSON → TypeScript, sort keys & path query.',
+  render(root){
+    const inp = el('textarea',{placeholder:'{ "id": 1, "tags": ["a"] }'});
+    const path = el('input',{type:'text',placeholder:'Path e.g. tags.0 or user.name'});
+    const out = outputBox();
+    const show=(s)=>{ out.classList.remove('err'); out.textContent=s; };
+    const fail=(m)=>{ out.classList.add('err'); out.textContent=m; };
+    const parse=()=>JSON.parse(inp.value||'null');
+    const tsType=(x)=>{
+      if(x===null) return 'null';
+      if(Array.isArray(x)){ if(!x.length) return 'unknown[]'; const ts=[...new Set(x.map(tsType))]; return (ts.length===1?ts[0]:'('+ts.join(' | ')+')')+'[]'; }
+      const t=typeof x;
+      if(t==='string'||t==='number'||t==='boolean') return t;
+      if(t==='object'){ const body=Object.entries(x).map(([k,v])=>`  ${/^[A-Za-z_$][\w$]*$/.test(k)?k:JSON.stringify(k)}: ${tsType(v).replace(/\n/g,'\n  ')};`).join('\n'); return `{\n${body}\n}`; }
+      return 'unknown';
+    };
+    const sortKeys=(v)=>Array.isArray(v)?v.map(sortKeys):(v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,sortKeys(v[k])])):v);
+    const query=(v,p)=>{ const keys=p.replace(/\[(\d+)\]/g,'.$1').split('.').map(s=>s.trim()).filter(Boolean); let cur=v; for(const k of keys){ if(cur==null) return undefined; cur=cur[k]; } return cur; };
+    root.append(field('JSON', inp),
+      el('div',{class:'btnrow'},
+        el('button',{class:'btn primary',onclick:()=>{ try{ show('type Root = '+tsType(parse())+';'); }catch(e){ fail(e.message); } }},'→ TypeScript'),
+        el('button',{class:'btn',onclick:()=>{ try{ show(JSON.stringify(sortKeys(parse()),null,2)); }catch(e){ fail(e.message); } }},'Sort keys'),
+        el('button',{class:'btn',onclick:(e)=>copy(out.textContent,e.target)},'Copy')),
+      field('Query path', path),
+      el('div',{class:'btnrow'}, el('button',{class:'btn',onclick:()=>{ try{ const r=query(parse(),path.value); show(r===undefined?'(undefined)':JSON.stringify(r,null,2)); }catch(e){ fail(e.message); } }},'Run query')),
+      field('Output', out));
+  }});
+
+// cURL -> code
+tool({ id:'curl', emoji:'🌀', name:'cURL → code', blurb:'Convert a curl command to fetch & Python.',
+  render(root){
+    const inp = el('textarea',{placeholder:"curl -X POST https://api.example.com/v1 -H 'Authorization: Bearer x' -d '{\"a\":1}'"});
+    const fetchOut = outputBox(), pyOut = outputBox();
+    const tokenize=(s)=>{ const t=[]; let cur='', q=null; s=s.replace(/\\\n/g,' ');
+      for(const c of s){ if(q){ if(c===q) q=null; else cur+=c; }
+        else if(c==='"'||c==="'") q=c;
+        else if(/\s/.test(c)){ if(cur){t.push(cur);cur='';} }
+        else cur+=c; }
+      if(cur) t.push(cur); return t; };
+    const parse=(s)=>{ const t=tokenize(s.trim()); const o={method:null,url:null,headers:{},data:null};
+      for(let i=0;i<t.length;i++){ const a=t[i];
+        if(a==='curl') continue;
+        else if(a==='-X'||a==='--request') o.method=t[++i];
+        else if(a==='-H'||a==='--header'){ const h=t[++i]||''; const ci=h.indexOf(':'); if(ci>0) o.headers[h.slice(0,ci).trim()]=h.slice(ci+1).trim(); }
+        else if(a==='-d'||a==='--data'||a==='--data-raw'||a==='--data-binary') o.data=t[++i];
+        else if(a==='-u'||a==='--user') o.headers['Authorization']='Basic '+btoa(t[++i]||'');
+        else if(!a.startsWith('-') && /^https?:\/\//.test(a)) o.url=a; }
+      if(!o.method) o.method=o.data!=null?'POST':'GET';
+      return o; };
+    const pyDict=(h)=>'{'+Object.entries(h).map(([k,v])=>`${JSON.stringify(k)}: ${JSON.stringify(v)}`).join(', ')+'}';
+    const run=()=>{
+      let o; try{ o=parse(inp.value); }catch{ return; }
+      if(!o.url){ fetchOut.classList.add('err'); fetchOut.textContent='No http(s) URL found in the command'; pyOut.textContent=''; return; }
+      fetchOut.classList.remove('err');
+      const opts={ method:o.method, headers:o.headers }; if(o.data!=null) opts.body=o.data;
+      fetchOut.textContent = `const res = await fetch(${JSON.stringify(o.url)}, ${JSON.stringify(opts,null,2)});\nconst data = await res.json();`;
+      pyOut.textContent = `import requests\nres = requests.request(${JSON.stringify(o.method)}, ${JSON.stringify(o.url)},\n    headers=${pyDict(o.headers)}${o.data!=null?`,\n    data=${JSON.stringify(o.data)}`:''})\nprint(res.json())`;
+    };
+    inp.addEventListener('input',run);
+    root.append(field('curl command', inp),
+      el('div',{class:'btnrow'}, el('button',{class:'btn',onclick:(e)=>copy(fetchOut.textContent,e.target)},'Copy fetch')),
+      field('JavaScript (fetch)', fetchOut), field('Python (requests)', pyOut));
+    run();
+  }});
+
+// Data transform
+tool({ id:'transform', emoji:'🧮', name:'Transform', blurb:'Sort/dedupe lines, slugify, case styles, CSV⇄JSON.',
+  render(root){
+    const inp = el('textarea',{placeholder:'Lines, CSV or a JSON array…'});
+    const out = outputBox();
+    const lines=()=>inp.value.split(/\r?\n/);
+    const setOut=(s)=>{ out.classList.remove('err'); out.textContent=s; };
+    const words=(s)=>s.replace(/([a-z0-9])([A-Z])/g,'$1 $2').split(/[\s_\-]+/).filter(Boolean);
+    const csvToJson=(txt)=>{ const rows=[]; let row=[], cur='', q=false;
+      for(let i=0;i<txt.length;i++){ const c=txt[i];
+        if(q){ if(c==='"'){ if(txt[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+        else if(c==='"') q=true;
+        else if(c===','){ row.push(cur); cur=''; }
+        else if(c==='\n'||c==='\r'){ if(c==='\r'&&txt[i+1]==='\n') i++; row.push(cur); rows.push(row); row=[]; cur=''; }
+        else cur+=c; }
+      if(cur!==''||row.length){ row.push(cur); rows.push(row); }
+      const head=rows.shift()||[];
+      return rows.filter(r=>!(r.length===1&&r[0]==='')).map(r=>Object.fromEntries(head.map((h,i)=>[h,r[i]??'']))); };
+    const jsonToCsv=(txt)=>{ const arr=JSON.parse(txt); if(!Array.isArray(arr)) throw new Error('Expected a JSON array of objects');
+      const cols=[...new Set(arr.flatMap(o=>Object.keys(o||{})))];
+      const esc=(v)=>{ v=v==null?'':String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+      return [cols.join(','),...arr.map(o=>cols.map(c=>esc(o?.[c])).join(','))].join('\n'); };
+    const btn=(label,fn)=>el('button',{class:'btn',onclick:()=>{ try{ setOut(fn()); }catch(e){ out.classList.add('err'); out.textContent=e.message; } }},label);
+    root.append(field('Input', inp),
+      el('div',{class:'btnrow'},
+        btn('Sort A→Z',()=>lines().sort().join('\n')),
+        btn('Sort Z→A',()=>lines().sort().reverse().join('\n')),
+        btn('Dedupe',()=>[...new Set(lines())].join('\n')),
+        btn('Reverse',()=>lines().reverse().join('\n')),
+        btn('Shuffle',()=>{ const a=lines(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a.join('\n'); })),
+      el('div',{class:'btnrow'},
+        btn('slug',()=>inp.value.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')),
+        btn('camelCase',()=>words(inp.value).map((x,i)=>i?x[0].toUpperCase()+x.slice(1).toLowerCase():x.toLowerCase()).join('')),
+        btn('PascalCase',()=>words(inp.value).map(x=>x[0].toUpperCase()+x.slice(1).toLowerCase()).join('')),
+        btn('snake_case',()=>words(inp.value).map(x=>x.toLowerCase()).join('_')),
+        btn('kebab-case',()=>words(inp.value).map(x=>x.toLowerCase()).join('-')),
+        btn('CONSTANT',()=>words(inp.value).map(x=>x.toUpperCase()).join('_'))),
+      el('div',{class:'btnrow'},
+        btn('CSV → JSON',()=>JSON.stringify(csvToJson(inp.value),null,2)),
+        btn('JSON → CSV',()=>jsonToCsv(inp.value)),
+        el('button',{class:'btn',onclick:(e)=>copy(out.textContent,e.target)},'Copy')),
+      field('Output', out));
+  }});
+
+// HMAC & CRC
+tool({ id:'hmac', emoji:'🔐', name:'HMAC & CRC', blurb:'HMAC-SHA (keyed) and CRC32 checksums.',
+  render(root){
+    const msg = el('textarea',{placeholder:'Message…'});
+    const key = el('input',{type:'text',placeholder:'Secret key (for HMAC)'});
+    const alg = el('select',{}, el('option',{},'SHA-256'), el('option',{},'SHA-384'), el('option',{},'SHA-512'));
+    const box = el('div',{class:'kv'});
+    const crc32=(str)=>{ const data=new TextEncoder().encode(str); let c=~0;
+      for(let i=0;i<data.length;i++){ c^=data[i]; for(let k=0;k<8;k++) c=(c>>>1)^(0xEDB88320 & -(c&1)); }
+      return ((~c)>>>0).toString(16).padStart(8,'0'); };
+    const run=async()=>{
+      box.innerHTML='';
+      const add=(k,v)=>box.append(el('div',{class:'k'},k),el('div',{onclick:(e)=>copy(v,e.target),style:'cursor:pointer;word-break:break-all'},v));
+      add('CRC32', crc32(msg.value));
+      if(key.value){
+        const ck=await crypto.subtle.importKey('raw', new TextEncoder().encode(key.value), {name:'HMAC',hash:alg.value}, false, ['sign']);
+        const sig=await crypto.subtle.sign('HMAC', ck, new TextEncoder().encode(msg.value));
+        add('HMAC-'+alg.value, [...new Uint8Array(sig)].map(b=>b.toString(16).padStart(2,'0')).join(''));
+      } else add('HMAC', '(enter a key)');
+    };
+    [msg,key].forEach(x=>x.addEventListener('input',run)); alg.addEventListener('change',run);
+    root.append(field('Message', msg), field('Key', key), field('HMAC algorithm', alg), field('Results (click to copy)', box));
+    run();
+  }});
+
+// QR code
+tool({ id:'qr', emoji:'🔳', name:'QR code', blurb:'Generate a scannable QR code — fully offline.',
+  render(root){
+    const inp = el('textarea',{placeholder:'URL or text…'});
+    inp.value='https://tools.vanshul.com';
+    const cvs = el('canvas',{class:'qr'}), note = el('div',{class:'sub',style:'margin-top:10px'});
+    const run=()=>{
+      try{
+        const {matrix,size}=QR.encode(inp.value||' ');
+        const quiet=4, scale=Math.max(2,Math.floor(320/(size+quiet*2))), dim=(size+quiet*2)*scale;
+        cvs.width=dim; cvs.height=dim;
+        const ctx=cvs.getContext('2d');
+        ctx.fillStyle='#fff'; ctx.fillRect(0,0,dim,dim); ctx.fillStyle='#000';
+        for(let r=0;r<size;r++) for(let c=0;c<size;c++) if(matrix[r][c]) ctx.fillRect((c+quiet)*scale,(r+quiet)*scale,scale,scale);
+        cvs.style.display=''; note.classList.remove('err'); note.textContent=`Version ${(size-17)/4}, ${size}×${size} modules, error-correction level M.`;
+      }catch(e){ cvs.style.display='none'; note.classList.add('err'); note.textContent=e.message; }
+    };
+    inp.addEventListener('input',run);
+    const dl=el('button',{class:'btn',onclick:()=>{ const a=el('a',{href:cvs.toDataURL('image/png'),download:'qr.png'}); a.click(); }},'Download PNG');
+    root.append(field('Content', inp), el('div',{class:'btnrow'}, dl), cvs, note);
+    run();
+  }});
+
 // ---------- routing / shell ----------
 const nav = document.getElementById('nav');
 const main = document.getElementById('main');
 
-nav.append(el('a',{href:'#',class:'',onclick:(e)=>{e.preventDefault();location.hash='';}},'🏠 All tools'));
+nav.append(el('a',{href:'#','data-home':'1',onclick:(e)=>{e.preventDefault();location.hash='';}},'🏠 All tools'));
 for(const t of tools) nav.append(el('a',{href:'#'+t.id},`${t.emoji}  ${t.name}`));
 
 function renderHome(){
@@ -363,7 +818,7 @@ function renderHome(){
 
 function route(){
   const id = location.hash.slice(1);
-  for(const a of nav.querySelectorAll('a')) a.classList.toggle('active', a.getAttribute('href')==='#'+id || (!id && a.textContent.includes('All tools')));
+  for(const a of nav.querySelectorAll('a')) a.classList.toggle('active', a.getAttribute('href')==='#'+id || (!id && a.dataset.home==='1'));
   const t = tools.find(x=>x.id===id);
   if(!t){ renderHome(); return; }
   main.innerHTML='';

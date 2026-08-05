@@ -13,11 +13,20 @@ uploaded, and everything works offline (installable as a PWA).
 | URL encode | Encode / decode URL components |
 | JWT decoder | Inspect header, payload & claims (no signature check) |
 | Hash | SHA-1 / SHA-256 / SHA-512 via WebCrypto |
-| UUID | Generate random v4 UUIDs |
+| ID & random | UUID v4, ULID, nanoid, random hex & passwords |
 | Timestamp | Convert between Unix time and dates |
 | Color | HEX ⇄ RGB ⇄ HSL with a picker |
 | Text | Word/char counts + case conversion |
 | Line diff | Compare two text blocks (LCS) |
+| Regex tester | Live match highlighting, capture groups & replace preview |
+| Token & cost | Approx LLM token count + input-cost estimate |
+| Cron | Explain a cron expression & preview next runs |
+| JSON ⇄ YAML | Convert between JSON and YAML (common subset) |
+| JSON tools | JSON → TypeScript types, sort keys & path query |
+| cURL → code | Turn a `curl` command into `fetch` / Python `requests` |
+| Transform | Sort/dedupe lines, slugify, case styles, CSV ⇄ JSON |
+| HMAC & CRC | Keyed HMAC-SHA and CRC32 checksums |
+| QR code | Generate a scannable QR (byte mode, ECC level M, offline) |
 
 Each tool is a route (`#json`, `#base64`, …) so any tool is directly linkable.
 
@@ -41,7 +50,7 @@ tools/
 ## Run locally
 
 ```sh
-cd ideas/tools && python3 -m http.server 8081
+cd tools && python3 -m http.server 8081
 # open http://localhost:8081  (http, not file://, so the service worker registers)
 ```
 
@@ -55,5 +64,5 @@ cd ideas/tools && python3 -m http.server 8081
 
 ## Next tools to add
 
-QR generator, cron (link to `cron.vanshul.com`), Markdown preview, regex tester,
-number-base converter, image → data-URI, YAML ⇄ JSON.
+Markdown preview, number-base converter, image → data-URI, QR reader
+(via `BarcodeDetector`). A cron builder also lives at `cron.vanshul.com`.

@@ -1,7 +1,8 @@
 // Offline-first service worker for tools.vanshul.com.
-// Cache-first for the tiny static shell; the app is a single self-contained
-// page so this makes it fully usable offline after the first visit.
-const CACHE = 'tools-v1';
+// The app is a single self-contained page. The static shell is served
+// network-first so new deploys show up immediately, with a cache fallback
+// that keeps everything fully usable offline after the first visit.
+const CACHE = 'tools-v2';
 const ASSETS = ['./', './index.html', './manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {
@@ -18,6 +19,24 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const { request } = e;
   if (request.method !== 'GET') return;
+
+  const isShell = request.mode === 'navigate' ||
+    request.destination === 'document' ||
+    new URL(request.url).pathname.endsWith('.html');
+
+  if (isShell) {
+    // Network-first: latest deploy wins, fall back to cache when offline.
+    e.respondWith(
+      fetch(request).then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put('./index.html', copy)).catch(() => {});
+        return res;
+      }).catch(() => caches.match('./index.html').then((h) => h || caches.match('./')))
+    );
+    return;
+  }
+
+  // Everything else: cache-first with runtime caching.
   e.respondWith(
     caches.match(request).then((hit) =>
       hit || fetch(request).then((res) => {
