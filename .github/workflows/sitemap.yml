@@ -1,0 +1,40 @@
+name: sitemap
+
+# Regenerates sitemap.xml + robots.txt on every push and commits the result
+# back if it changed. paths-ignore + "[skip ci]" prevent an infinite loop.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'sitemap.xml'
+      - 'robots.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sitemap-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+      - name: Generate sitemap
+        run: node scripts/gen-sitemap.mjs
+      - name: Commit if changed
+        run: |
+          if [ -n "$(git status --porcelain sitemap.xml robots.txt)" ]; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add sitemap.xml robots.txt
+            git commit -m "chore(sitemap): auto-update [skip ci]"
+            git push
+          else
+            echo "sitemap already up to date"
+          fi

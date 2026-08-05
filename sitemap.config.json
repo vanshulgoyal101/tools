@@ -1,0 +1,10 @@
+{
+  "baseUrl": "https://tools.vanshul.com",
+  "scanDir": ".",
+  "outFile": "sitemap.xml",
+  "include": ["index.html"],
+  "exclude": ["404.html", "node_modules/**", ".git/**", "tests/**"],
+  "extraRoutes": [],
+  "defaultChangefreq": "monthly",
+  "updateRobots": true
+}
