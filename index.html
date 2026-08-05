@@ -761,14 +761,18 @@ tool({ id:'qr', emoji:'🔳', name:'QR code', blurb:'Generate a scannable QR cod
     inp.value='https://tools.vanshul.com';
     const cvs = el('canvas',{class:'qr'}), note = el('div',{class:'sub',style:'margin-top:10px'});
     const run=()=>{
+      const text=inp.value;
+      if(!text.trim()){ cvs.style.display='none'; note.classList.remove('err'); note.textContent='Enter text or a URL to generate a QR code.'; return; }
       try{
-        const {matrix,size}=qrEncode(inp.value||' ');
+        const {matrix,size}=qrEncode(text);
         const quiet=4, scale=Math.max(2,Math.floor(320/(size+quiet*2))), dim=(size+quiet*2)*scale;
         cvs.width=dim; cvs.height=dim;
         const ctx=cvs.getContext('2d');
         ctx.fillStyle='#fff'; ctx.fillRect(0,0,dim,dim); ctx.fillStyle='#000';
         for(let r=0;r<size;r++) for(let c=0;c<size;c++) if(matrix[r][c]) ctx.fillRect((c+quiet)*scale,(r+quiet)*scale,scale,scale);
-        cvs.style.display=''; note.classList.remove('err'); note.textContent=`Version ${(size-17)/4}, ${size}×${size} modules, error-correction level M.`;
+        const bytes=encU8(text).length, kind=/^https?:\/\//i.test(text.trim())?'URL':'text';
+        cvs.style.display=''; note.classList.remove('err');
+        note.textContent=`${bytes} byte${bytes===1?'':'s'} · ${kind} · version ${(size-17)/4}, ${size}×${size} modules, ECC level M.`;
       }catch(e){ cvs.style.display='none'; note.classList.add('err'); note.textContent=e.message; }
     };
     inp.addEventListener('input',run);
