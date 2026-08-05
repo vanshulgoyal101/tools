@@ -4,6 +4,19 @@ A **privacy-first, offline developer toolbox**. A single self-contained page wit
 a dozen everyday utilities that run **100% in your browser** — nothing is ever
 uploaded, and everything works offline (installable as a PWA).
 
+## The wedge: Smart Paste + ⌘K palette
+
+What makes this more than "just another toolbox": you don't pick a tool first.
+
+- **Smart Paste** — the home screen is one box. Paste *anything* and it
+  auto-detects the type and decodes/converts it inline: JWT, JSON, Base64,
+  URL-encoded text, hex colours, Unix timestamps, UUIDs, hash digests (by
+  length) and integers (radix). Each result links through to the full tool.
+- **Command palette** — press <kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> to fuzzy-search
+  and jump to any tool, keyboard-only.
+
+Everything else is still a click away in the tool grid below.
+
 ## Tools included
 
 | Tool | What it does |

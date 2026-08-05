@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Tools — paste anything, it finds the right dev tool">
+  <defs>
+    <radialGradient id="bg" cx="82%" cy="-8%" r="95%">
+      <stop offset="0" stop-color="#15181f"/>
+      <stop offset="1" stop-color="#0c0d12"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="1" y="1" width="1198" height="628" fill="none" stroke="#262a36" stroke-width="2" rx="0"/>
+  <text x="84" y="185" font-size="86" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif">🧰</text>
+  <text x="84" y="330" fill="#f2f4f9" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="88" font-weight="700" letter-spacing="-2">Tools</text>
+  <text x="86" y="392" fill="#7c9cff" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="34">tools.vanshul.com</text>
+  <text x="86" y="470" fill="#f2f4f9" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="40" font-weight="600">Paste anything — it finds the right dev tool.</text>
+  <text x="86" y="522" fill="#949cb0" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="30">JSON · JWT · Base64 · Regex · YAML · QR · Hash · Cron — 100% offline</text>
+</svg>

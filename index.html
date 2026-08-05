@@ -4,16 +4,81 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<title>Tools — a private, offline developer toolbox</title>
-<meta name="description" content="A dozen everyday developer utilities — JSON, Base64, JWT, hashing, UUIDs, timestamps and more — that run 100% in your browser. Nothing is ever uploaded. Works offline.">
+<title>Tools — paste anything, it finds the right dev tool</title>
+<meta name="description" content="Smart Paste: drop in a JWT, JSON, Base64, URL-encoded text, a colour, a timestamp or a UUID and it auto-detects and decodes it. Plus 19 dev utilities and a ⌘K command palette — all 100% in your browser, offline, nothing uploaded.">
+<meta name="keywords" content="developer tools, json formatter, base64 encode decode, jwt decoder, sha-256 hash, uuid generator, regex tester, cron expression, json to yaml, json to typescript, curl to fetch, hmac generator, qr code generator, unix timestamp converter, url encoder, offline dev tools">
+<meta name="author" content="Vanshul Goyal">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="theme-color" content="#0c0d12">
+<meta name="application-name" content="Tools">
 <link rel="canonical" href="https://tools.vanshul.com/">
-<meta property="og:title" content="Tools — a private, offline developer toolbox">
-<meta property="og:description" content="Everyday dev utilities that run entirely in your browser. Nothing is uploaded. Works offline.">
+<meta property="og:site_name" content="Tools · vanshul.com">
+<meta property="og:title" content="Tools — paste anything, it finds the right dev tool">
+<meta property="og:description" content="Smart Paste auto-detects JWT, JSON, Base64, colours, timestamps & UUIDs — plus 19 offline dev utilities. 100% in your browser, nothing uploaded.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://tools.vanshul.com/">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="https://tools.vanshul.com/og.svg">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Tools — paste anything, it finds the right dev tool">
+<meta name="twitter:description" content="Smart Paste + 19 offline developer utilities that run entirely in your browser. Nothing uploaded.">
+<meta name="twitter:image" content="https://tools.vanshul.com/og.svg">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%B0%3C/text%3E%3C/svg%3E">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Tools — private, offline developer toolbox",
+  "url": "https://tools.vanshul.com/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any (modern web browser)",
+  "browserRequirements": "Requires JavaScript",
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "description": "A private, offline-first collection of 19 everyday developer utilities plus a Smart Paste box that auto-detects JWTs, JSON, Base64, colours, timestamps and UUIDs. Everything runs entirely in the browser — nothing is uploaded.",
+  "author": { "@type": "Person", "name": "Vanshul Goyal", "url": "https://vanshul.com" },
+  "featureList": [
+    "JSON formatter (pretty-print, minify, validate)",
+    "Base64 encoder and decoder",
+    "URL encoder and decoder",
+    "JWT decoder",
+    "SHA-1 / SHA-256 / SHA-512 hashing",
+    "UUID, ULID, nanoid and password generator",
+    "Unix timestamp converter",
+    "HEX / RGB / HSL colour converter",
+    "Text stats and case conversion",
+    "Line diff",
+    "Regex tester with capture groups",
+    "LLM token and cost estimator",
+    "Cron expression explainer",
+    "JSON to YAML converter",
+    "JSON to TypeScript, sort keys and path query",
+    "cURL to fetch and Python converter",
+    "Data transform (sort, dedupe, slugify, CSV to JSON)",
+    "HMAC-SHA and CRC32 checksums",
+    "QR code generator"
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "@type": "Question", "name": "Is my data uploaded anywhere?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. Every conversion runs entirely in your browser with plain JavaScript and the Web Crypto API. There are no server round-trips for any tool and no analytics that read your input." } },
+    { "@type": "Question", "name": "Does it work offline?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. The app is an installable PWA with a service worker, so after your first visit every tool keeps working with no internet connection." } },
+    { "@type": "Question", "name": "Is it free?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes, it is completely free with no accounts, no sign-up and no ads that read your data." } },
+    { "@type": "Question", "name": "Does the JWT decoder verify signatures?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. The JWT tool only decodes and inspects the header, payload and claims. It does not verify the signature, so never trust a token based on this tool alone." } },
+    { "@type": "Question", "name": "Are the QR codes generated on my device?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. QR codes are encoded entirely in your browser (byte mode, error-correction level M) — nothing is sent to a server." } }
+  ]
+}
+</script>
 <style>
   :root{
     --bg:#0c0d12; --panel:#14161d; --panel-2:#191c25; --line:#262a36;
@@ -68,6 +133,16 @@
   mark{background:rgba(124,156,255,.35);color:var(--text);border-radius:3px;padding:0 1px}
   canvas.qr{max-width:100%;height:auto;background:#fff;border-radius:12px;image-rendering:pixelated;margin-top:6px}
   .err{color:var(--bad)}
+  .site-info{border-top:1px solid var(--line);background:var(--panel);color:var(--muted)}
+  .site-info .wrap{max-width:900px;margin:0 auto;padding:40px clamp(16px,4vw,44px)}
+  .site-info h2{color:var(--text);font-size:1.15rem;margin:0 0 10px;letter-spacing:-.01em}
+  .site-info h3{color:var(--text);font-size:.95rem;margin:26px 0 10px}
+  .site-info p{margin:0 0 12px;line-height:1.6}
+  .site-info ul.toollist{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px 24px}
+  .site-info ul.toollist li{font-size:.9rem;line-height:1.5}
+  .site-info ul.toollist b{color:var(--text);font-weight:600}
+  .site-info dt{color:var(--text);font-weight:600;margin-top:14px}
+  .site-info dd{margin:4px 0 0;line-height:1.6}
   @media(max-width:720px){
     .layout{grid-template-columns:1fr}
     aside{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line)}
@@ -85,6 +160,50 @@
   </aside>
   <main id="main"></main>
 </div>
+
+<footer class="site-info">
+  <div class="wrap">
+    <h2>Free, private, offline developer tools</h2>
+    <p><strong>tools.vanshul.com</strong> is a collection of 19 everyday developer utilities plus a Smart Paste box that auto-detects whatever you drop in. Every conversion runs entirely in your browser using plain JavaScript and the Web Crypto API — nothing is ever uploaded to a server, there are no accounts or ads, and the whole app works offline as an installable PWA.</p>
+    <h3>Every tool included</h3>
+    <ul class="toollist">
+      <li><b>JSON formatter</b> — pretty-print, minify &amp; validate JSON.</li>
+      <li><b>Base64</b> — encode &amp; decode Base64 (UTF-8 safe).</li>
+      <li><b>URL encode</b> — encode / decode URL components &amp; query strings.</li>
+      <li><b>JWT decoder</b> — inspect a JSON Web Token's header, payload &amp; claims.</li>
+      <li><b>Hash</b> — SHA-1, SHA-256 &amp; SHA-512 of any text.</li>
+      <li><b>ID &amp; random</b> — UUID v4, ULID, nanoid, hex &amp; passwords.</li>
+      <li><b>Timestamp</b> — convert between Unix time and dates.</li>
+      <li><b>Color</b> — convert HEX, RGB &amp; HSL with a picker.</li>
+      <li><b>Text</b> — word / character counts &amp; case conversion.</li>
+      <li><b>Line diff</b> — compare two blocks of text line-by-line.</li>
+      <li><b>Regex tester</b> — live matches, capture groups &amp; replace preview.</li>
+      <li><b>Token &amp; cost</b> — approximate LLM token count &amp; input cost.</li>
+      <li><b>Cron</b> — explain a cron expression &amp; preview the next runs.</li>
+      <li><b>JSON ⇄ YAML</b> — convert between JSON and YAML.</li>
+      <li><b>JSON tools</b> — JSON → TypeScript types, sort keys &amp; path query.</li>
+      <li><b>cURL → code</b> — turn a curl command into fetch or Python requests.</li>
+      <li><b>Transform</b> — sort / dedupe lines, slugify, case styles, CSV ⇄ JSON.</li>
+      <li><b>HMAC &amp; CRC</b> — keyed HMAC-SHA and CRC32 checksums.</li>
+      <li><b>QR code</b> — generate a scannable QR code, fully offline.</li>
+      <li><b>Smart Paste</b> — paste a JWT, JSON, Base64, colour, timestamp or UUID and it auto-detects &amp; decodes it.</li>
+    </ul>
+    <h3>Frequently asked questions</h3>
+    <dl>
+      <dt>Is my data uploaded anywhere?</dt>
+      <dd>No. Every conversion runs entirely in your browser with plain JavaScript and the Web Crypto API. There are no server round-trips for any tool and no analytics that read your input.</dd>
+      <dt>Does it work offline?</dt>
+      <dd>Yes. The app is an installable PWA with a service worker, so after your first visit every tool keeps working with no internet connection.</dd>
+      <dt>Is it free?</dt>
+      <dd>Yes, it is completely free with no accounts, no sign-up and no ads that read your data.</dd>
+      <dt>Does the JWT decoder verify signatures?</dt>
+      <dd>No. The JWT tool only decodes and inspects the header, payload and claims — it does not verify the signature, so never trust a token based on this tool alone.</dd>
+      <dt>Are the QR codes generated on my device?</dt>
+      <dd>Yes. QR codes are encoded entirely in your browser (byte mode, error-correction level M) — nothing is sent to a server.</dd>
+    </dl>
+    <p>Built by <a href="https://vanshul.com" rel="author">Vanshul Goyal</a>. Explore more projects at <a href="https://links.vanshul.com">links.vanshul.com</a>.</p>
+  </div>
+</footer>
 
 <script type="module">
 // ---------- helpers ----------
@@ -801,19 +920,147 @@ const main = document.getElementById('main');
 nav.append(el('a',{href:'#','data-home':'1',onclick:(e)=>{e.preventDefault();location.hash='';}},'🏠 All tools'));
 for(const t of tools) nav.append(el('a',{href:'#'+t.id},`${t.emoji}  ${t.name}`));
 
+// ---------- Smart Paste (the wedge) + command palette ----------
+const smartStyle = document.createElement('style');
+smartStyle.textContent = `
+  .smart{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin:0 0 18px;box-shadow:0 16px 40px rgba(0,0,0,.3)}
+  .smart .lead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+  .smart .lead h2{margin:0;font-size:1.1rem}
+  .smart .lead .kbd{color:var(--muted);font-size:.8rem}
+  .kbd b{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:2px 6px;font-family:var(--mono);color:var(--text)}
+  .smart textarea{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;color:var(--text);padding:14px;font-family:var(--mono);font-size:1rem;min-height:84px;resize:vertical}
+  .smart textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,156,255,.14)}
+  .detected{margin-top:14px;display:grid;gap:12px}
+  .dcard{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .dcard .dh{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+  .dcard .dh .t{font-weight:600}
+  .dcard .dh .t .badge{background:rgba(124,156,255,.16);color:var(--accent);border-radius:999px;padding:2px 9px;font-size:.72rem;margin-left:8px;text-transform:uppercase;letter-spacing:.05em}
+  .dcard a.open{color:var(--accent);text-decoration:none;font-size:.82rem;white-space:nowrap}
+  .dcard pre{margin:0;font-family:var(--mono);font-size:.88rem;white-space:pre-wrap;word-break:break-word;color:var(--text)}
+  .palette{position:fixed;inset:0;background:rgba(4,5,8,.6);display:none;align-items:flex-start;justify-content:center;z-index:50;padding-top:12vh}
+  .palette.on{display:flex}
+  .palette .box{width:min(560px,92vw);background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+  .palette input{width:100%;background:var(--panel-2);border:none;border-bottom:1px solid var(--line);color:var(--text);padding:15px 18px;font-size:1rem}
+  .palette input:focus{outline:none}
+  .palette .list{max-height:52vh;overflow:auto}
+  .palette .it{display:flex;gap:12px;align-items:center;padding:11px 18px;cursor:pointer}
+  .palette .it .em{width:1.4em;text-align:center}
+  .palette .it .nm{font-weight:600}
+  .palette .it .bl{color:var(--muted);font-size:.82rem}
+  .palette .it.sel{background:var(--panel-2)}
+`;
+document.head.append(smartStyle);
+
+function b64decode(s){ try{ return decodeURIComponent(escape(atob(s))); }catch{ return null; } }
+function printableRatio(s){ if(!s) return 0; let p=0; for(const ch of s){ const c=ch.codePointAt(0); if(c===9||c===10||c===13||(c>=32&&c<=126)||c>127) p++; } return p/[...s].length; }
+
+// Given pasted text, return the data types we recognise (most-specific first).
+function detect(text){
+  const t=text.trim(); const found=[];
+  if(!t) return found;
+  // JWT
+  if(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*$/.test(t)){
+    const dj=(x)=>{try{let b=x.replace(/-/g,'+').replace(/_/g,'/');while(b.length%4)b+='=';return JSON.parse(decodeURIComponent(escape(atob(b))));}catch{return null;}};
+    const [h,p]=t.split('.'); const H=dj(h),P=dj(p);
+    if(H&&P) found.push({id:'jwt',label:'JWT',badge:'auth token',render:(box)=>{
+      box.append(el('pre',{},'header  '+JSON.stringify(H)+'\npayload '+JSON.stringify(P)));
+      const notes=[]; if(P.exp)notes.push('expires '+new Date(P.exp*1000).toLocaleString()+(P.exp*1000<Date.now()?' (EXPIRED)':'')); if(P.sub)notes.push('sub '+P.sub);
+      if(notes.length) box.append(el('pre',{style:'color:var(--muted);margin-top:6px'},notes.join(' · ')));
+    }});
+  }
+  // JSON
+  if(/^[\[{]/.test(t)){ try{ const v=JSON.parse(t); found.push({id:'json',label:'JSON',badge:'data',render:(box)=>box.append(el('pre',{},JSON.stringify(v,null,2)))}); }catch{} }
+  // URL-encoded
+  if(/%[0-9A-Fa-f]{2}/.test(t)){ try{ const d=decodeURIComponent(t); if(d!==t) found.push({id:'url',label:'URL-decoded',badge:'encoded',render:(box)=>box.append(el('pre',{},d))}); }catch{} }
+  // Base64 (only if it decodes to mostly-printable text and isn't already plain)
+  if(/^[A-Za-z0-9+/]+={0,2}$/.test(t)&&t.length>=8&&t.length%4===0){ const d=b64decode(t); if(d&&d!==t&&printableRatio(d)>0.85) found.push({id:'base64',label:'Base64-decoded',badge:'encoded',render:(box)=>box.append(el('pre',{},d))}); }
+  // Hex colour
+  if(/^#?[0-9a-fA-F]{6}$|^#?[0-9a-fA-F]{3}$/.test(t)){ const h=t.replace('#',''); const full=h.length===3?[...h].map(c=>c+c).join(''):h; const hex='#'+full.toLowerCase(); const n=parseInt(full,16),r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+    found.push({id:'color',label:'Colour',badge:hex,render:(box)=>{ box.append(el('div',{style:`height:40px;border-radius:8px;border:1px solid var(--line);background:${hex}`}), el('pre',{style:'margin-top:8px'},`rgb(${r}, ${g}, ${b})`)); }}); }
+  // Unix timestamp
+  if(/^\d{10}$/.test(t)){ const d=new Date(+t*1000); found.push({id:'time',label:'Unix timestamp (s)',badge:'time',render:(box)=>box.append(el('pre',{},d.toString()+'\n'+d.toISOString()))}); }
+  else if(/^\d{13}$/.test(t)){ const d=new Date(+t); found.push({id:'time',label:'Unix timestamp (ms)',badge:'time',render:(box)=>box.append(el('pre',{},d.toString()+'\n'+d.toISOString()))}); }
+  // UUID
+  if(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(t)){ found.push({id:'id',label:'UUID',badge:'v'+t[14],render:(box)=>box.append(el('pre',{},'Valid UUID — version '+t[14]))}); }
+  // Hash digest by length
+  const HLEN={32:'MD5',40:'SHA-1',64:'SHA-256',128:'SHA-512'};
+  if(/^[0-9a-f]+$/i.test(t)&&HLEN[t.length]){ found.push({id:'hash',label:HLEN[t.length]+' digest',badge:'hash',render:(box)=>box.append(el('pre',{style:'color:var(--muted)'},'Looks like a '+HLEN[t.length]+' hash ('+t.length+' hex chars).'))}); }
+  // Integer -> radix conversions
+  if(/^-?\d+$/.test(t)&&t.length<=15){ const n=parseInt(t,10); if(!Number.isNaN(n)) found.push({id:'transform',label:'Number',badge:'radix',render:(box)=>box.append(el('pre',{},`hex 0x${(n>>>0).toString(16)}   ·   oct 0o${(n>>>0).toString(8)}   ·   bin 0b${(n>>>0).toString(2)}`))}); }
+  return found;
+}
+
+function renderSmart(resultsEl, text){
+  resultsEl.innerHTML='';
+  const t=text.trim();
+  if(!t){ resultsEl.append(el('p',{class:'sub',style:'margin:6px 2px 0'},'Paste a JWT, JSON, Base64, a URL-encoded string, a colour, a timestamp, a UUID… it figures out the rest.')); return; }
+  for(const m of detect(text)){
+    const card=el('div',{class:'dcard'});
+    card.append(el('div',{class:'dh'},
+      el('div',{class:'t',html:`${m.label}<span class="badge">${m.badge||''}</span>`}),
+      el('a',{class:'open',href:'#'+m.id},'Open in full tool →')));
+    m.render(card); resultsEl.append(card);
+  }
+  const words=(t.match(/\S+/g)||[]).length;
+  resultsEl.append(el('div',{class:'dcard'},
+    el('div',{class:'dh'},
+      el('div',{class:'t',html:'Text <span class="badge">'+t.length+' chars · '+words+' words</span>'}),
+      el('a',{class:'open',href:'#hash'},'Hash it →'))));
+}
+
+function buildPalette(){
+  const overlay=el('div',{class:'palette'});
+  const input=el('input',{placeholder:'Jump to a tool…',spellcheck:'false'});
+  const list=el('div',{class:'list'});
+  overlay.append(el('div',{class:'box'}, input, list)); document.body.append(overlay);
+  let sel=0, items=[];
+  const close=()=>overlay.classList.remove('on');
+  const render=()=>{
+    const q=input.value.trim().toLowerCase();
+    items=tools.filter(t=>!q||(t.name+' '+t.blurb+' '+t.id).toLowerCase().includes(q));
+    if(sel>=items.length) sel=Math.max(0,items.length-1);
+    list.innerHTML='';
+    items.forEach((t,i)=>list.append(el('div',{class:'it'+(i===sel?' sel':''),onclick:()=>{location.hash='#'+t.id;close();}},
+      el('span',{class:'em'},t.emoji), el('div',{}, el('div',{class:'nm'},t.name), el('div',{class:'bl'},t.blurb)))));
+  };
+  input.addEventListener('input',()=>{sel=0;render();});
+  input.addEventListener('keydown',(e)=>{
+    if(e.key==='ArrowDown'){sel=Math.min(sel+1,items.length-1);render();e.preventDefault();}
+    else if(e.key==='ArrowUp'){sel=Math.max(sel-1,0);render();e.preventDefault();}
+    else if(e.key==='Enter'&&items[sel]){location.hash='#'+items[sel].id;close();}
+    else if(e.key==='Escape'){close();}
+  });
+  overlay.addEventListener('click',(e)=>{ if(e.target===overlay)close(); });
+  return { open:()=>{ overlay.classList.add('on'); input.value=''; sel=0; render(); setTimeout(()=>input.focus(),0); } };
+}
+const palette=buildPalette();
+window.addEventListener('keydown',(e)=>{ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){ e.preventDefault(); palette.open(); } });
+
 function renderHome(){
   main.innerHTML='';
   main.append(
-    el('h1',{},'A private developer toolbox'),
-    el('p',{class:'sub'},'Every tool runs entirely in your browser. Your data is never uploaded, and it all works offline.'));
+    el('h1',{},'Paste anything. It finds the tool.'),
+    el('p',{class:'sub'},'A private developer toolbox — everything runs in your browser, works offline, and nothing is uploaded.'));
+  const smart=el('div',{class:'smart'});
+  const results=el('div',{class:'detected'});
+  const ta=el('textarea',{placeholder:'Paste a JWT, JSON, Base64, URL-encoded text, a colour, a timestamp, a UUID…',spellcheck:'false'});
+  ta.addEventListener('input',()=>renderSmart(results,ta.value));
+  smart.append(
+    el('div',{class:'lead'}, el('h2',{},'🪄 Smart Paste'), el('span',{class:'kbd',html:'Press <b>⌘K</b> / <b>Ctrl&nbsp;K</b> for the command palette'})),
+    ta, results);
+  main.append(smart);
+  renderSmart(results,'');
   const grid = el('div',{class:'grid'});
   for(const t of tools)
     grid.append(el('a',{class:'tile',href:'#'+t.id},
       el('div',{class:'emoji'},t.emoji), el('h3',{},t.name), el('p',{},t.blurb)));
-  main.append(grid,
+  main.append(
+    el('h2',{style:'margin:22px 2px 8px;font-size:.9rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em'},'All tools'),
+    grid,
     el('p',{class:'privacy'},'🔒 No analytics that read your input, no server round-trips for any conversion. Built by ',
       el('a',{href:'https://vanshul.com'},'Vanshul'), '. ',
       el('a',{href:'https://links.vanshul.com'},'More projects'), '.'));
+  setTimeout(()=>ta.focus(),0);
 }
 
 function route(){
