@@ -209,7 +209,15 @@
 </footer>
 
 <script type="module">
-import { encU8, decU8, bytesToB64, b64ToBytes, jsonToYaml, yamlToJson, qrEncode } from './lib.js';
+import {
+  encU8, decU8, bytesToB64, b64ToBytes, jsonToYaml, yamlToJson, qrEncode,
+  crc32, jsonToTs, jsonPathQuery, sortKeys,
+  csvToJson, jsonToCsv, slugify, toCamel, toPascal, toSnake, toKebab, toConstant,
+  diffLines, parseColor, rgbToHsl, rgbToHex,
+  describeCron, cronNextRuns, MODEL_PRICES, estimateTokens, parseTimestamp,
+  parseCurl, curlToFetch, curlToPython,
+  detectPasteTypes, uuidV4, ulid, nanoid, randomHex, password
+} from './lib.js';
 
 // ---------- helpers ----------
 const el = (tag, attrs={}, ...kids)=>{
@@ -358,19 +366,10 @@ tool({ id:'id', emoji:'🆔', name:'ID & random', blurb:'UUID v4, ULID, nanoid, 
       el('option',{value:'pass'},'Password (20)'));
     const count = el('input',{type:'number',value:'5',min:'1',max:'100'});
     const out = outputBox();
-    const rand = (n)=>{ const a=new Uint8Array(n); crypto.getRandomValues(a); return a; };
-    const B32='0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // Crockford, for ULID
-    const ulid = ()=>{ let t=Date.now(), time=''; for(let i=0;i<10;i++){ time=B32[t%32]+time; t=Math.floor(t/32); }
-      const r=rand(16); let s=''; for(let i=0;i<16;i++) s+=B32[r[i]&31]; return time+s; };
-    const NANO='useandom-26T198340PX75pxJACKVERYMINDBUSHWOLF_GQZbfghjklqvwyzrict';
-    const nano = (n=21)=>{ const r=rand(n); let s=''; for(let i=0;i<n;i++) s+=NANO[r[i]&63]; return s; };
-    const PW='abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%^&*-_=+';
-    const pass = (n=20)=>{ const r=rand(n); let s=''; for(let i=0;i<n;i++) s+=PW[r[i]%PW.length]; return s; };
-    const hex = (n=16)=>[...rand(n)].map(b=>b.toString(16).padStart(2,'0')).join('');
     const one = ()=>{ switch(kind.value){
-      case 'ulid': return ulid(); case 'nanoid': return nano();
-      case 'hex': return hex(16); case 'pass': return pass(20);
-      default: return crypto.randomUUID(); } };
+      case 'ulid': return ulid(); case 'nanoid': return nanoid();
+      case 'hex': return randomHex(16); case 'pass': return password(20);
+      default: return uuidV4(); } };
     const gen = ()=>{ const n=Math.min(100,Math.max(1,Number(count.value)||1)); out.textContent = Array.from({length:n},one).join('\n'); };
     kind.addEventListener('change',gen); count.addEventListener('input',gen);
     root.append(field('Type', kind), field('How many', count),
@@ -398,12 +397,9 @@ tool({ id:'time', emoji:'🕑', name:'Timestamp', blurb:'Convert between Unix ti
       add('UTC', d.toUTCString());
     };
     ts.addEventListener('input',()=>{
-      const raw=ts.value.trim();
-      if(raw===''){ box.innerHTML=''; return; }
-      if(!/^-?\d+$/.test(raw)){ show(new Date(NaN)); return; }
-      let v=Number(raw);
-      if(Math.abs(v) < 1e11) v*=1000; // treat small magnitudes as seconds, large as ms
-      show(new Date(v));
+      const d=parseTimestamp(ts.value);
+      if(d===null){ box.innerHTML=''; return; }
+      show(d);
     });
     human.addEventListener('input',()=>{ const d=new Date(human.value.trim()); show(d); });
     root.append(
@@ -419,23 +415,10 @@ tool({ id:'color', emoji:'🎨', name:'Color', blurb:'Convert HEX ⇄ RGB ⇄ HS
     const picker = el('input',{type:'color',value:'#7c9cff',style:'width:52px;height:40px;padding:2px;border-radius:8px;background:var(--panel-2);border:1px solid var(--line)'});
     const sw = el('div',{class:'swatch'});
     const box = el('div',{class:'kv'});
-    const parse = (str)=>{
-      str = str.trim();
-      let m;
-      if(m=/^#?([0-9a-f]{3})$/i.exec(str)){ const [r,g,b]=m[1].split('').map(c=>parseInt(c+c,16)); return {r,g,b}; }
-      if(m=/^#?([0-9a-f]{6})$/i.exec(str)){ const i=parseInt(m[1],16); return {r:(i>>16)&255,g:(i>>8)&255,b:i&255}; }
-      if(m=/^rgba?\(([^)]+)\)$/i.exec(str)){ const [r,g,b]=m[1].trim().split(/[\s,\/]+/).map(x=>parseInt(x)); return {r,g,b}; }
-      return null;
-    };
-    const toHsl = ({r,g,b})=>{ r/=255;g/=255;b/=255; const mx=Math.max(r,g,b),mn=Math.min(r,g,b); let h=0,s=0,l=(mx+mn)/2;
-      if(mx!==mn){ const d=mx-mn; s=l>.5?d/(2-mx-mn):d/(mx+mn);
-        h = mx===r ? (g-b)/d+(g<b?6:0) : mx===g ? (b-r)/d+2 : (r-g)/d+4; h*=60; }
-      return {h:Math.round(h),s:Math.round(s*100),l:Math.round(l*100)}; };
-    const hex = ({r,g,b})=>'#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');
     const run = (str)=>{
-      const c = parse(str); box.innerHTML='';
+      const c = parseColor(str); box.innerHTML='';
       if(!c){ box.append(el('div',{class:'k'},'—'),el('div',{},'unrecognised colour')); return; }
-      const h = hex(c), hsl = toHsl(c);
+      const h = rgbToHex(c), hsl = rgbToHsl(c);
       sw.style.background = h; picker.value = h;
       const add=(k,v)=>box.append(el('div',{class:'k'},k),el('div',{onclick:(e)=>copy(v,e.target),style:'cursor:pointer'},v));
       add('HEX', h); add('RGB', `rgb(${c.r}, ${c.g}, ${c.b})`); add('HSL', `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`);
@@ -480,22 +463,16 @@ tool({ id:'diff', emoji:'🔀', name:'Line diff', blurb:'Compare two blocks of t
     const out = el('div',{class:'out'});
     // Simple LCS over lines.
     const diff = ()=>{
-      out.classList.remove('err');
-      const A=a.value.split('\n'), B=b.value.split('\n');
-      const n=A.length,m=B.length;
-      if(n*m > 4_000_000){ out.classList.add('err'); out.textContent='Too large to diff — keep it under a few thousand lines per side.'; return; }
-      const dp=Array.from({length:n+1},()=>new Array(m+1).fill(0));
-      for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)
-        dp[i][j]=A[i]===B[j]?dp[i+1][j+1]+1:Math.max(dp[i+1][j],dp[i][j+1]);
-      out.innerHTML=''; let i=0,j=0;
+      out.classList.remove('err'); out.innerHTML='';
+      let rows;
+      try{ rows=diffLines(a.value, b.value); }
+      catch(e){ out.classList.add('err'); out.textContent=e.message; return; }
       const line=(cls,txt)=>{ const d=el('div'); if(cls) d.append(el(cls,{},txt||' ')); else d.textContent=txt; out.append(d); };
-      while(i<n&&j<m){
-        if(A[i]===B[j]){ line(null,'  '+A[i]); i++; j++; }
-        else if(dp[i+1][j]>=dp[i][j+1]){ line('del','- '+A[i]); i++; }
-        else { line('ins','+ '+B[j]); j++; }
+      for(const {t,line:ln} of rows){
+        if(t===' ') line(null,'  '+ln);
+        else if(t==='-') line('del','- '+ln);
+        else line('ins','+ '+ln);
       }
-      while(i<n) line('del','- '+A[i++]);
-      while(j<m) line('ins','+ '+B[j++]);
       if(!out.children.length) out.textContent='(identical)';
     };
     a.addEventListener('input',diff); b.addEventListener('input',diff);
@@ -545,18 +522,16 @@ tool({ id:'tokens', emoji:'🎟️', name:'Token & cost', blurb:'Approx LLM toke
   render(root){
     const inp = el('textarea',{placeholder:'Paste a prompt or document…'});
     const model = el('select',{});
-    const PRICES = {'GPT-4o':2.5,'GPT-4o mini':0.15,'o3':2,'Claude Opus':15,'Claude Sonnet':3,'Gemini 1.5 Pro':1.25,'Gemini Flash':0.075};
-    for(const k of Object.keys(PRICES)) model.append(el('option',{value:k},k));
+    for(const k of Object.keys(MODEL_PRICES)) model.append(el('option',{value:k},k));
     const box = el('div',{class:'kv'});
     const est = ()=>{
-      const t=inp.value, chars=t.length, words=(t.trim().match(/\S+/g)||[]).length;
-      const tokens=Math.round((chars/4 + words/0.75)/2)||0;
+      const {chars,words,tokens}=estimateTokens(inp.value);
       box.innerHTML='';
       const add=(k,v)=>box.append(el('div',{class:'k'},k),el('div',{},v));
       add('Characters', chars.toLocaleString());
       add('Words', words.toLocaleString());
       add('Est. tokens', '~'+tokens.toLocaleString());
-      add('Input cost ('+model.value+')', '$'+(tokens/1e6*PRICES[model.value]).toFixed(5));
+      add('Input cost ('+model.value+')', '$'+(tokens/1e6*MODEL_PRICES[model.value]).toFixed(5));
       add('Note', 'Rough heuristic — not a real tokenizer. Prices are approximate.');
     };
     inp.addEventListener('input',est); model.addEventListener('change',est);
@@ -569,34 +544,12 @@ tool({ id:'cron', emoji:'⏰', name:'Cron', blurb:'Explain a cron expression & p
   render(root){
     const inp = el('input',{type:'text',value:'*/5 9-17 * * 1-5'});
     const desc = outputBox(), box = el('div',{class:'out'});
-    const parseField=(f,min,max)=>{ const set=new Set();
-      for(const part of f.split(',')){ let [range,stepS]=part.split('/'); const step=stepS?parseInt(stepS):1;
-        let lo,hi;
-        if(range==='*'){ lo=min; hi=max; }
-        else if(range.includes('-')){ const [a,b]=range.split('-').map(Number); lo=a; hi=b; }
-        else { lo=hi=parseInt(range); }
-        if(isNaN(lo)||isNaN(hi)||isNaN(step)||step<1) throw new Error('Bad field: '+f);
-        for(let v=lo;v<=hi;v+=step) set.add(v); }
-      return set; };
     const run=()=>{
       box.innerHTML=''; desc.classList.remove('err');
-      const parts=inp.value.trim().split(/\s+/);
-      if(parts.length!==5){ desc.classList.add('err'); desc.textContent='Need exactly 5 fields: minute hour day-of-month month day-of-week'; return; }
-      let mins,hrs,doms,mons,dows;
-      try{ mins=parseField(parts[0],0,59); hrs=parseField(parts[1],0,23); doms=parseField(parts[2],1,31);
-        mons=parseField(parts[3],1,12); dows=parseField(parts[4].replace(/\b7\b/g,'0'),0,6); }
+      let runs;
+      try{ runs=cronNextRuns(inp.value, new Date(), 6); }
       catch(e){ desc.classList.add('err'); desc.textContent=e.message; return; }
-      desc.textContent = `Runs at minute [${parts[0]}], hour [${parts[1]}], day-of-month [${parts[2]}], month [${parts[3]}], weekday [${parts[4]}].`;
-      const domStar=parts[2]==='*', dowStar=parts[4]==='*';
-      const d=new Date(); d.setSeconds(0,0); d.setMinutes(d.getMinutes()+1);
-      const runs=[]; let guard=0;
-      while(runs.length<6 && guard++<535680){
-        if(mons.has(d.getMonth()+1) && hrs.has(d.getHours()) && mins.has(d.getMinutes())){
-          const dayOk = (domStar||dowStar) ? (doms.has(d.getDate())&&dows.has(d.getDay())) : (doms.has(d.getDate())||dows.has(d.getDay()));
-          if(dayOk) runs.push(new Date(d));
-        }
-        d.setMinutes(d.getMinutes()+1);
-      }
+      desc.textContent = describeCron(inp.value.trim().split(/\s+/));
       for(const r of runs) box.append(el('div',{},r.toLocaleString()));
       if(!runs.length) box.textContent='No upcoming runs within a year.';
     };
@@ -631,23 +584,13 @@ tool({ id:'jsonts', emoji:'🧬', name:'JSON tools', blurb:'JSON → TypeScript,
     const show=(s)=>{ out.classList.remove('err'); out.textContent=s; };
     const fail=(m)=>{ out.classList.add('err'); out.textContent=m; };
     const parse=()=>JSON.parse(inp.value||'null');
-    const tsType=(x)=>{
-      if(x===null) return 'null';
-      if(Array.isArray(x)){ if(!x.length) return 'unknown[]'; const ts=[...new Set(x.map(tsType))]; return (ts.length===1?ts[0]:'('+ts.join(' | ')+')')+'[]'; }
-      const t=typeof x;
-      if(t==='string'||t==='number'||t==='boolean') return t;
-      if(t==='object'){ const body=Object.entries(x).map(([k,v])=>`  ${/^[A-Za-z_$][\w$]*$/.test(k)?k:JSON.stringify(k)}: ${tsType(v).replace(/\n/g,'\n  ')};`).join('\n'); return `{\n${body}\n}`; }
-      return 'unknown';
-    };
-    const sortKeys=(v)=>Array.isArray(v)?v.map(sortKeys):(v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,sortKeys(v[k])])):v);
-    const query=(v,p)=>{ const keys=p.replace(/\[(\d+)\]/g,'.$1').split('.').map(s=>s.trim()).filter(Boolean); let cur=v; for(const k of keys){ if(cur==null) return undefined; cur=cur[k]; } return cur; };
     root.append(field('JSON', inp),
       el('div',{class:'btnrow'},
-        el('button',{class:'btn primary',onclick:()=>{ try{ show('type Root = '+tsType(parse())+';'); }catch(e){ fail(e.message); } }},'→ TypeScript'),
+        el('button',{class:'btn primary',onclick:()=>{ try{ show(jsonToTs(parse())); }catch(e){ fail(e.message); } }},'→ TypeScript'),
         el('button',{class:'btn',onclick:()=>{ try{ show(JSON.stringify(sortKeys(parse()),null,2)); }catch(e){ fail(e.message); } }},'Sort keys'),
         el('button',{class:'btn',onclick:(e)=>copy(out.textContent,e.target)},'Copy')),
       field('Query path', path),
-      el('div',{class:'btnrow'}, el('button',{class:'btn',onclick:()=>{ try{ const r=query(parse(),path.value); show(r===undefined?'(undefined)':JSON.stringify(r,null,2)); }catch(e){ fail(e.message); } }},'Run query')),
+      el('div',{class:'btnrow'}, el('button',{class:'btn',onclick:()=>{ try{ const r=jsonPathQuery(parse(),path.value); show(r===undefined?'(undefined)':JSON.stringify(r,null,2)); }catch(e){ fail(e.message); } }},'Run query')),
       field('Output', out));
   }});
 
@@ -656,30 +599,12 @@ tool({ id:'curl', emoji:'🌀', name:'cURL → code', blurb:'Convert a curl comm
   render(root){
     const inp = el('textarea',{placeholder:"curl -X POST https://api.example.com/v1 -H 'Authorization: Bearer x' -d '{\"a\":1}'"});
     const fetchOut = outputBox(), pyOut = outputBox();
-    const tokenize=(s)=>{ const t=[]; let cur='', q=null; s=s.replace(/\\\n/g,' ');
-      for(const c of s){ if(q){ if(c===q) q=null; else cur+=c; }
-        else if(c==='"'||c==="'") q=c;
-        else if(/\s/.test(c)){ if(cur){t.push(cur);cur='';} }
-        else cur+=c; }
-      if(cur) t.push(cur); return t; };
-    const parse=(s)=>{ const t=tokenize(s.trim()); const o={method:null,url:null,headers:{},data:null};
-      for(let i=0;i<t.length;i++){ const a=t[i];
-        if(a==='curl') continue;
-        else if(a==='-X'||a==='--request') o.method=t[++i];
-        else if(a==='-H'||a==='--header'){ const h=t[++i]||''; const ci=h.indexOf(':'); if(ci>0) o.headers[h.slice(0,ci).trim()]=h.slice(ci+1).trim(); }
-        else if(a==='-d'||a==='--data'||a==='--data-raw'||a==='--data-binary') o.data=t[++i];
-        else if(a==='-u'||a==='--user') o.headers['Authorization']='Basic '+btoa(t[++i]||'');
-        else if(!a.startsWith('-') && /^https?:\/\//.test(a)) o.url=a; }
-      if(!o.method) o.method=o.data!=null?'POST':'GET';
-      return o; };
-    const pyDict=(h)=>'{'+Object.entries(h).map(([k,v])=>`${JSON.stringify(k)}: ${JSON.stringify(v)}`).join(', ')+'}';
     const run=()=>{
-      let o; try{ o=parse(inp.value); }catch{ return; }
+      let o; try{ o=parseCurl(inp.value); }catch{ return; }
       if(!o.url){ fetchOut.classList.add('err'); fetchOut.textContent='No http(s) URL found in the command'; pyOut.textContent=''; return; }
       fetchOut.classList.remove('err');
-      const opts={ method:o.method, headers:o.headers }; if(o.data!=null) opts.body=o.data;
-      fetchOut.textContent = `const res = await fetch(${JSON.stringify(o.url)}, ${JSON.stringify(opts,null,2)});\nconst data = await res.json();`;
-      pyOut.textContent = `import requests\nres = requests.request(${JSON.stringify(o.method)}, ${JSON.stringify(o.url)},\n    headers=${pyDict(o.headers)}${o.data!=null?`,\n    data=${JSON.stringify(o.data)}`:''})\nprint(res.json())`;
+      fetchOut.textContent = curlToFetch(o);
+      pyOut.textContent = curlToPython(o);
     };
     inp.addEventListener('input',run);
     root.append(field('curl command', inp),
@@ -695,21 +620,6 @@ tool({ id:'transform', emoji:'🧮', name:'Transform', blurb:'Sort/dedupe lines,
     const out = outputBox();
     const lines=()=>inp.value.split(/\r?\n/);
     const setOut=(s)=>{ out.classList.remove('err'); out.textContent=s; };
-    const words=(s)=>s.replace(/([a-z0-9])([A-Z])/g,'$1 $2').split(/[\s_\-]+/).filter(Boolean);
-    const csvToJson=(txt)=>{ const rows=[]; let row=[], cur='', q=false;
-      for(let i=0;i<txt.length;i++){ const c=txt[i];
-        if(q){ if(c==='"'){ if(txt[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
-        else if(c==='"') q=true;
-        else if(c===','){ row.push(cur); cur=''; }
-        else if(c==='\n'||c==='\r'){ if(c==='\r'&&txt[i+1]==='\n') i++; row.push(cur); rows.push(row); row=[]; cur=''; }
-        else cur+=c; }
-      if(cur!==''||row.length){ row.push(cur); rows.push(row); }
-      const head=rows.shift()||[];
-      return rows.filter(r=>!(r.length===1&&r[0]==='')).map(r=>Object.fromEntries(head.map((h,i)=>[h,r[i]??'']))); };
-    const jsonToCsv=(txt)=>{ const arr=JSON.parse(txt); if(!Array.isArray(arr)) throw new Error('Expected a JSON array of objects');
-      const cols=[...new Set(arr.flatMap(o=>Object.keys(o||{})))];
-      const esc=(v)=>{ v=v==null?'':String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
-      return [cols.join(','),...arr.map(o=>cols.map(c=>esc(o?.[c])).join(','))].join('\n'); };
     const btn=(label,fn)=>el('button',{class:'btn',onclick:()=>{ try{ setOut(fn()); }catch(e){ out.classList.add('err'); out.textContent=e.message; } }},label);
     root.append(field('Input', inp),
       el('div',{class:'btnrow'},
@@ -719,12 +629,12 @@ tool({ id:'transform', emoji:'🧮', name:'Transform', blurb:'Sort/dedupe lines,
         btn('Reverse',()=>lines().reverse().join('\n')),
         btn('Shuffle',()=>{ const a=lines(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a.join('\n'); })),
       el('div',{class:'btnrow'},
-        btn('slug',()=>inp.value.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')),
-        btn('camelCase',()=>words(inp.value).map((x,i)=>i?x[0].toUpperCase()+x.slice(1).toLowerCase():x.toLowerCase()).join('')),
-        btn('PascalCase',()=>words(inp.value).map(x=>x[0].toUpperCase()+x.slice(1).toLowerCase()).join('')),
-        btn('snake_case',()=>words(inp.value).map(x=>x.toLowerCase()).join('_')),
-        btn('kebab-case',()=>words(inp.value).map(x=>x.toLowerCase()).join('-')),
-        btn('CONSTANT',()=>words(inp.value).map(x=>x.toUpperCase()).join('_'))),
+        btn('slug',()=>slugify(inp.value)),
+        btn('camelCase',()=>toCamel(inp.value)),
+        btn('PascalCase',()=>toPascal(inp.value)),
+        btn('snake_case',()=>toSnake(inp.value)),
+        btn('kebab-case',()=>toKebab(inp.value)),
+        btn('CONSTANT',()=>toConstant(inp.value))),
       el('div',{class:'btnrow'},
         btn('CSV → JSON',()=>JSON.stringify(csvToJson(inp.value),null,2)),
         btn('JSON → CSV',()=>jsonToCsv(inp.value)),
@@ -739,9 +649,6 @@ tool({ id:'hmac', emoji:'🔐', name:'HMAC & CRC', blurb:'HMAC-SHA (keyed) and C
     const key = el('input',{type:'text',placeholder:'Secret key (for HMAC)'});
     const alg = el('select',{}, el('option',{},'SHA-256'), el('option',{},'SHA-384'), el('option',{},'SHA-512'));
     const box = el('div',{class:'kv'});
-    const crc32=(str)=>{ const data=new TextEncoder().encode(str); let c=~0;
-      for(let i=0;i<data.length;i++){ c^=data[i]; for(let k=0;k<8;k++) c=(c>>>1)^(0xEDB88320 & -(c&1)); }
-      return ((~c)>>>0).toString(16).padStart(8,'0'); };
     const run=async()=>{
       box.innerHTML='';
       const add=(k,v)=>box.append(el('div',{class:'k'},k),el('div',{onclick:(e)=>copy(v,e.target),style:'cursor:pointer;word-break:break-all'},v));
@@ -822,55 +729,20 @@ smartStyle.textContent = `
 `;
 document.head.append(smartStyle);
 
-function b64decode(s){ try{ return decodeURIComponent(escape(atob(s))); }catch{ return null; } }
-function printableRatio(s){ if(!s) return 0; let p=0; for(const ch of s){ const c=ch.codePointAt(0); if(c===9||c===10||c===13||(c>=32&&c<=126)||c>127) p++; } return p/[...s].length; }
-
-// Given pasted text, return the data types we recognise (most-specific first).
-function detect(text){
-  const t=text.trim(); const found=[];
-  if(!t) return found;
-  // JWT
-  if(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*$/.test(t)){
-    const dj=(x)=>{try{let b=x.replace(/-/g,'+').replace(/_/g,'/');while(b.length%4)b+='=';return JSON.parse(decodeURIComponent(escape(atob(b))));}catch{return null;}};
-    const [h,p]=t.split('.'); const H=dj(h),P=dj(p);
-    if(H&&P) found.push({id:'jwt',label:'JWT',badge:'auth token',render:(box)=>{
-      box.append(el('pre',{},'header  '+JSON.stringify(H)+'\npayload '+JSON.stringify(P)));
-      const notes=[]; if(P.exp)notes.push('expires '+new Date(P.exp*1000).toLocaleString()+(P.exp*1000<Date.now()?' (EXPIRED)':'')); if(P.sub)notes.push('sub '+P.sub);
-      if(notes.length) box.append(el('pre',{style:'color:var(--muted);margin-top:6px'},notes.join(' · ')));
-    }});
-  }
-  // JSON
-  if(/^[\[{]/.test(t)){ try{ const v=JSON.parse(t); found.push({id:'json',label:'JSON',badge:'data',render:(box)=>box.append(el('pre',{},JSON.stringify(v,null,2)))}); }catch{} }
-  // URL-encoded
-  if(/%[0-9A-Fa-f]{2}/.test(t)){ try{ const d=decodeURIComponent(t); if(d!==t) found.push({id:'url',label:'URL-decoded',badge:'encoded',render:(box)=>box.append(el('pre',{},d))}); }catch{} }
-  // Base64 (only if it decodes to mostly-printable text and isn't already plain)
-  if(/^[A-Za-z0-9+/]+={0,2}$/.test(t)&&t.length>=8&&t.length%4===0){ const d=b64decode(t); if(d&&d!==t&&printableRatio(d)>0.85) found.push({id:'base64',label:'Base64-decoded',badge:'encoded',render:(box)=>box.append(el('pre',{},d))}); }
-  // Hex colour
-  if(/^#?[0-9a-fA-F]{6}$|^#?[0-9a-fA-F]{3}$/.test(t)){ const h=t.replace('#',''); const full=h.length===3?[...h].map(c=>c+c).join(''):h; const hex='#'+full.toLowerCase(); const n=parseInt(full,16),r=(n>>16)&255,g=(n>>8)&255,b=n&255;
-    found.push({id:'color',label:'Colour',badge:hex,render:(box)=>{ box.append(el('div',{style:`height:40px;border-radius:8px;border:1px solid var(--line);background:${hex}`}), el('pre',{style:'margin-top:8px'},`rgb(${r}, ${g}, ${b})`)); }}); }
-  // Unix timestamp
-  if(/^\d{10}$/.test(t)){ const d=new Date(+t*1000); found.push({id:'time',label:'Unix timestamp (s)',badge:'time',render:(box)=>box.append(el('pre',{},d.toString()+'\n'+d.toISOString()))}); }
-  else if(/^\d{13}$/.test(t)){ const d=new Date(+t); found.push({id:'time',label:'Unix timestamp (ms)',badge:'time',render:(box)=>box.append(el('pre',{},d.toString()+'\n'+d.toISOString()))}); }
-  // UUID
-  if(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(t)){ found.push({id:'id',label:'UUID',badge:'v'+t[14],render:(box)=>box.append(el('pre',{},'Valid UUID — version '+t[14]))}); }
-  // Hash digest by length
-  const HLEN={32:'MD5',40:'SHA-1',64:'SHA-256',128:'SHA-512'};
-  if(/^[0-9a-f]+$/i.test(t)&&HLEN[t.length]){ found.push({id:'hash',label:HLEN[t.length]+' digest',badge:'hash',render:(box)=>box.append(el('pre',{style:'color:var(--muted)'},'Looks like a '+HLEN[t.length]+' hash ('+t.length+' hex chars).'))}); }
-  // Integer -> radix conversions
-  if(/^-?\d+$/.test(t)&&t.length<=15){ const n=parseInt(t,10); if(!Number.isNaN(n)) found.push({id:'transform',label:'Number',badge:'radix',render:(box)=>box.append(el('pre',{},`hex 0x${(n>>>0).toString(16)}   ·   oct 0o${(n>>>0).toString(8)}   ·   bin 0b${(n>>>0).toString(2)}`))}); }
-  return found;
-}
+// Smart Paste detection lives in ./lib.js (detectPasteTypes); rendered by renderSmart below.
 
 function renderSmart(resultsEl, text){
   resultsEl.innerHTML='';
   const t=text.trim();
   if(!t){ resultsEl.append(el('p',{class:'sub',style:'margin:6px 2px 0'},'Paste a JWT, JSON, Base64, a URL-encoded string, a colour, a timestamp, a UUID… it figures out the rest.')); return; }
-  for(const m of detect(text)){
+  for(const m of detectPasteTypes(text)){
     const card=el('div',{class:'dcard'});
     card.append(el('div',{class:'dh'},
       el('div',{class:'t',html:`${m.label}<span class="badge">${m.badge||''}</span>`}),
       el('a',{class:'open',href:'#'+m.id},'Open in full tool →')));
-    m.render(card); resultsEl.append(card);
+    if(m.color) card.append(el('div',{style:`height:40px;border-radius:8px;border:1px solid var(--line);background:${m.color}`}));
+    card.append(el('pre',{},m.text));
+    resultsEl.append(card);
   }
   const words=(t.match(/\S+/g)||[]).length;
   resultsEl.append(el('div',{class:'dcard'},

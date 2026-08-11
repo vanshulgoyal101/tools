@@ -59,10 +59,11 @@ The shipped app has **zero runtime dependencies**. It is three static files:
 | `lib.js` | All **pure, DOM-free logic** as an ES module: base64/UTF-8, JSON⇄YAML, the QR encoder, CRC32, cron, CSV, colours, JSON→TypeScript, Smart-Paste detection, ID generators, etc. |
 | `sw.js` | Offline service worker (network-first for the shell, cache-first for assets). |
 
-`index.html` imports its heavy algorithms from `lib.js`:
+Every tool sources its pure logic from `lib.js` — for example:
 
 ```js
-import { encU8, decU8, bytesToB64, b64ToBytes, jsonToYaml, yamlToJson, qrEncode } from './lib.js';
+import { qrEncode, jsonToYaml, yamlToJson, crc32, cronNextRuns,
+         csvToJson, jsonToCsv, parseColor, detectPasteTypes, /* … */ } from './lib.js';
 ```
 
 Keeping the logic in `lib.js` means **the code that ships is the code that is
