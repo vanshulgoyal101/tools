@@ -6,7 +6,7 @@ All business logic in `lib.js` is tested using [Vitest](https://vitest.dev). Tes
 
 **Current Coverage**: 62 unit tests covering ~90% of lib.js exports.
 
-**E2E Coverage**: 70+ Playwright tests covering all 19 tools, Smart Paste, ⌘K, copying, navigation, offline mode, and mobile.
+**E2E Coverage**: 24 Playwright smoke tests covering all 19 tools, Smart Paste, ⌘K, routing, PWA API availability, and mobile viewport behavior.
 
 **Coverage Goals**:
 - ✅ All exported functions have ≥1 test
@@ -41,7 +41,7 @@ npm test
 npm run test:e2e
 ```
 
-Opens browser and runs all tool workflows across Chrome, Firefox, Safari, iPhone, and Pixel.
+Runs the validated smoke suite. Chromium is currently the validated project in this environment.
 
 View live UI test runner:
 ```sh

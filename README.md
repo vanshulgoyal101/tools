@@ -103,7 +103,7 @@ npm run test:coverage  # coverage report
 ```
 
 ```sh
-npm run test:e2e  # run E2E tests (70+ Playwright tests across browsers & devices)
+npm run test:e2e  # run Playwright E2E smoke suite (24 tests, Chromium-validated)
 npm run test:e2e:ui  # interactive test UI
 npm run test:e2e:debug  # debug single test
 ```
