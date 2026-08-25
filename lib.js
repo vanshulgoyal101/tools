@@ -76,7 +76,20 @@ export function yamlToJson(text) {
   const lines = text.replace(/\t/g, '  ').split('\n').map((l) => l.replace(/\s+#.*$/, '')).filter((l) => l.trim() !== '' && !/^\s*#/.test(l));
   let i = 0;
   const indentOf = (l) => l.match(/^ */)[0].length;
-  const flowFix = (s) => s.replace(/([{,\[]\s*)([A-Za-z_][\w -]*?)(\s*:)/g, '$1"$2"$3');
+  // Split a flow body on top-level commas, respecting nested [] {} and quotes.
+  const splitFlow = (body) => {
+    const parts = []; let depth = 0, q = null, cur = '';
+    for (const c of body) {
+      if (q) { cur += c; if (c === q) q = null; }
+      else if (c === '"' || c === "'") { q = c; cur += c; }
+      else if (c === '[' || c === '{') { depth++; cur += c; }
+      else if (c === ']' || c === '}') { depth--; cur += c; }
+      else if (c === ',' && depth === 0) { parts.push(cur); cur = ''; }
+      else cur += c;
+    }
+    if (cur.trim() !== '' || parts.length) parts.push(cur);
+    return parts.map((p) => p.trim()).filter((p) => p !== '');
+  };
   const scalar = (s) => {
     s = s.trim();
     if (s === '' || s === '~' || s === 'null') return null;
@@ -84,7 +97,16 @@ export function yamlToJson(text) {
     if (s === 'false') return false;
     if (s[0] === '"' && s.endsWith('"')) { try { return JSON.parse(s); } catch { return s.slice(1, -1); } }
     if (s[0] === "'" && s.endsWith("'")) return s.slice(1, -1).replace(/''/g, "'");
-    if (s[0] === '[' || s[0] === '{') { try { return JSON.parse(flowFix(s)); } catch { return s; } }
+    // Inline flow seq/map — parse recursively so *unquoted* values work (JSON.parse can't).
+    if (s[0] === '[' && s.endsWith(']')) return splitFlow(s.slice(1, -1)).map(scalar);
+    if (s[0] === '{' && s.endsWith('}')) {
+      const obj = {};
+      for (const pair of splitFlow(s.slice(1, -1))) {
+        const ci = pair.indexOf(':'); if (ci < 0) continue;
+        obj[String(scalar(pair.slice(0, ci)))] = scalar(pair.slice(ci + 1));
+      }
+      return obj;
+    }
     if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(s)) return Number(s);
     return s;
   };

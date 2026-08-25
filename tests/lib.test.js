@@ -56,6 +56,34 @@ describe('JSON <-> YAML', () => {
     expect(yamlToJson(jsonToYaml({ v: 'true' })).v).toBe('true');
     expect(yamlToJson(jsonToYaml({ v: '123' })).v).toBe('123');
   });
+  it('parses inline flow sequences with UNQUOTED values (not a raw string)', () => {
+    expect(yamlToJson('x:\n  allowed: [united, canada, mexico]')).toEqual({
+      x: { allowed: ['united', 'canada', 'mexico'] },
+    });
+    expect(yamlToJson('nums: [1, 2, 3]')).toEqual({ nums: [1, 2, 3] });
+    expect(yamlToJson('nested: [[a, b], [c]]')).toEqual({ nested: [['a', 'b'], ['c']] });
+  });
+  it('parses inline flow maps with unquoted keys and values', () => {
+    expect(yamlToJson('cfg: {a: 1, b: two, c: true}')).toEqual({
+      cfg: { a: 1, b: 'two', c: true },
+    });
+  });
+  it('parses a schema-shaped document (block maps + flow enum)', () => {
+    const yaml = [
+      'query_intent_schema:',
+      '',
+      '  scope:',
+      '    type: object',
+      '    fields:',
+      '      country:',
+      '        allowed: [united states, canada]',
+    ].join('\n');
+    expect(yamlToJson(yaml)).toEqual({
+      query_intent_schema: {
+        scope: { type: 'object', fields: { country: { allowed: ['united states', 'canada'] } } },
+      },
+    });
+  });
 });
 
 describe('QR encoder', () => {
