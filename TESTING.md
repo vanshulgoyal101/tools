@@ -6,6 +6,8 @@ All business logic in `lib.js` is tested using [Vitest](https://vitest.dev). Tes
 
 **Current Coverage**: 62 unit tests covering ~90% of lib.js exports.
 
+**E2E Coverage**: 70+ Playwright tests covering all 19 tools, Smart Paste, ⌘K, copying, navigation, offline mode, and mobile.
+
 **Coverage Goals**:
 - ✅ All exported functions have ≥1 test
 - ✅ Edge cases (empty, null, malformed, out-of-range) are tested
@@ -32,6 +34,23 @@ If `~/.npm` is locked, the script automatically uses a temporary cache at `$TMPD
 
 ```sh
 npm test
+```
+### Run E2E Tests (Playwright)
+
+```sh
+npm run test:e2e
+```
+
+Opens browser and runs all tool workflows across Chrome, Firefox, Safari, iPhone, and Pixel.
+
+View live UI test runner:
+```sh
+npm run test:e2e:ui
+```
+
+Debug a single test:
+```sh
+npm run test:e2e:debug
 ```
 
 Output:

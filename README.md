@@ -102,6 +102,12 @@ npm run test:watch  # watch mode
 npm run test:coverage  # coverage report
 ```
 
+```sh
+npm run test:e2e  # run E2E tests (70+ Playwright tests across browsers & devices)
+npm run test:e2e:ui  # interactive test UI
+npm run test:e2e:debug  # debug single test
+```
+
 ## Documentation
 
 See the detailed docs for architecture, feature specs, testing strategy, and accessibility:
