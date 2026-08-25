@@ -33,6 +33,28 @@ export function b64urlDecode(s) {
 }
 
 /* ------------------------------------------------------------------ *
+ * URL query strings
+ * ------------------------------------------------------------------ */
+// Parse a full URL or a bare query string into decoded [key, value] pairs.
+export function parseQuery(input) {
+  let s = String(input).trim();
+  const fi = s.indexOf('#'); if (fi >= 0) s = s.slice(0, fi); // drop fragment
+  const qi = s.indexOf('?');
+  if (qi >= 0) s = s.slice(qi + 1); // take the query part of a full URL
+  else if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) return []; // full URL with no query
+  if (s === '') return [];
+  const dec = (x) => { try { return decodeURIComponent(x.replace(/\+/g, ' ')); } catch { return x; } };
+  return s.split('&').filter(Boolean).map((pair) => {
+    const eq = pair.indexOf('=');
+    return eq < 0 ? [dec(pair), ''] : [dec(pair.slice(0, eq)), dec(pair.slice(eq + 1))];
+  });
+}
+// Rebuild an encoded query string from [key, value] pairs.
+export function buildQuery(pairs) {
+  return pairs.map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
+}
+
+/* ------------------------------------------------------------------ *
  * JSON  <->  YAML  (block style; parser handles the common subset)
  * ------------------------------------------------------------------ */
 export function jsonToYaml(value) {

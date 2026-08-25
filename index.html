@@ -216,7 +216,8 @@ import {
   diffLines, parseColor, rgbToHsl, rgbToHex,
   describeCron, cronNextRuns, MODEL_PRICES, estimateTokens, parseTimestamp,
   parseCurl, curlToFetch, curlToPython,
-  detectPasteTypes, uuidV4, uuidV7, ulid, nanoid, randomHex, password
+  detectPasteTypes, uuidV4, uuidV7, ulid, nanoid, randomHex, password,
+  parseQuery
 } from './lib.js';
 
 // ---------- helpers ----------
@@ -299,14 +300,23 @@ tool({ id:'base64', emoji:'📦', name:'Base64', blurb:'Encode & decode Base64 (
 // URL encode
 tool({ id:'url', emoji:'🔗', name:'URL encode', blurb:'Encode / decode URL components & query strings.',
   render(root){
-    const inp = el('textarea',{placeholder:'https://example.com/?q=hello world'});
+    const inp = el('textarea',{placeholder:'https://example.com/?q=hello world&page=2'});
     const out = outputBox();
+    const qbox = el('div',{class:'kv'});
+    const parse = ()=>{
+      qbox.innerHTML='';
+      const pairs = parseQuery(inp.value);
+      if(!pairs.length){ qbox.append(el('div',{class:'k'},'—'), el('div',{},'no query parameters found')); return; }
+      for(const [k,v] of pairs) qbox.append(el('div',{class:'k'},k), el('div',{onclick:(e)=>copy(v,e.target),style:'cursor:pointer;word-break:break-all'}, v===''?'(empty)':v));
+    };
     root.append(field('Input', inp),
       el('div',{class:'btnrow'},
         el('button',{class:'btn primary',onclick:()=>{out.textContent=encodeURIComponent(inp.value);}},'Encode'),
         el('button',{class:'btn',onclick:()=>{try{out.classList.remove('err');out.textContent=decodeURIComponent(inp.value);}catch{out.classList.add('err');out.textContent='Malformed encoding';}}},'Decode'),
+        el('button',{class:'btn',onclick:parse},'Parse query'),
         el('button',{class:'btn',onclick:(e)=>copy(out.textContent,e.target)},'Copy')),
-      field('Output', out));
+      field('Output', out),
+      field('Query parameters (click value to copy)', qbox));
   }});
 
 // JWT decode
@@ -615,7 +625,9 @@ tool({ id:'curl', emoji:'🌀', name:'cURL → code', blurb:'Convert a curl comm
     };
     inp.addEventListener('input',run);
     root.append(field('curl command', inp),
-      el('div',{class:'btnrow'}, el('button',{class:'btn',onclick:(e)=>copy(fetchOut.textContent,e.target)},'Copy fetch')),
+      el('div',{class:'btnrow'},
+        el('button',{class:'btn',onclick:(e)=>copy(fetchOut.textContent,e.target)},'Copy fetch'),
+        el('button',{class:'btn',onclick:(e)=>copy(pyOut.textContent,e.target)},'Copy Python')),
       field('JavaScript (fetch)', fetchOut), field('Python (requests)', pyOut));
     run();
   }});

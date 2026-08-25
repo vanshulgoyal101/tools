@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   encU8, decU8, bytesToB64, b64ToBytes, b64Encode, b64Decode, b64urlDecode,
+  parseQuery, buildQuery,
   jsonToYaml, yamlToJson,
   qrEncode, QR_MAX_BYTES,
   crc32,
@@ -33,6 +34,24 @@ describe('base64 / utf-8', () => {
   it('b64urlDecode handles url-safe alphabet and missing padding', () => {
     const header = b64urlDecode('eyJhbGciOiJIUzI1NiJ9'); // {"alg":"HS256"}
     expect(JSON.parse(header).alg).toBe('HS256');
+  });
+});
+
+describe('URL query strings', () => {
+  it('parses a full URL into decoded key/value pairs', () => {
+    expect(parseQuery('https://example.com/path?q=hello%20world&page=2#frag'))
+      .toEqual([['q', 'hello world'], ['page', '2']]);
+  });
+  it('parses a bare query string and decodes + as space', () => {
+    expect(parseQuery('name=a+b&flag')).toEqual([['name', 'a b'], ['flag', '']]);
+  });
+  it('returns [] when there is no query', () => {
+    expect(parseQuery('https://example.com/path')).toEqual([]);
+    expect(parseQuery('')).toEqual([]);
+  });
+  it('buildQuery re-encodes pairs and round-trips', () => {
+    expect(buildQuery([['q', 'a b'], ['x', '1&2']])).toBe('q=a%20b&x=1%262');
+    expect(parseQuery('?' + buildQuery([['k', 'v v']]))).toEqual([['k', 'v v']]);
   });
 });
 
