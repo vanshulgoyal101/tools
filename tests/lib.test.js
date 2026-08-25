@@ -14,7 +14,7 @@ import {
   parseTimestamp,
   parseCurl, curlToFetch, curlToPython,
   printableRatio, detectPasteTypes,
-  uuidV4, ulid, nanoid, randomHex, password,
+  uuidV4, uuidV7, ulid, nanoid, randomHex, password,
 } from '../lib.js';
 
 describe('base64 / utf-8', () => {
@@ -246,8 +246,15 @@ describe('cron', () => {
     expect(() => parseCronField('5-70', 0, 59)).toThrow(/out of range/);
     expect(() => parseCronField('30-10', 0, 59)).toThrow(/out of range/);
   });
-  it('describes an expression', () => {
-    expect(describeCron('*/5 9 * * 1'.split(' '))).toContain('minute [*/5]');
+  it('describes common expressions in plain English', () => {
+    expect(describeCron('* * * * *'.split(' '))).toBe('Every minute.');
+    expect(describeCron('*/5 * * * *'.split(' '))).toBe('Every 5 minutes.');
+    expect(describeCron('0 * * * *'.split(' '))).toBe('At minute 0 of every hour.');
+    expect(describeCron('0 9 * * *'.split(' '))).toBe('At 09:00.');
+    expect(describeCron('30 9 * * 1-5'.split(' '))).toBe('At 09:30, on Monday to Friday.');
+    expect(describeCron('*/5 9-17 * * 1-5'.split(' '))).toBe('Every 5 minutes, between 09:00 and 17:59, on Monday to Friday.');
+    expect(describeCron('0 0 1 * *'.split(' '))).toBe('At 00:00, on day 1 of the month.');
+    expect(describeCron('0 12 * 1 *'.split(' '))).toBe('At 12:00, in January.');
   });
   it('computes the next runs from a fixed instant', () => {
     const from = new Date('2025-01-01T10:07:00Z');
@@ -341,6 +348,11 @@ describe('Smart Paste detection', () => {
 describe('ID & random generators', () => {
   it('uuidV4 matches the v4 format', () => {
     expect(uuidV4()).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+  });
+  it('uuidV7 is a valid, time-sortable v7 uuid', () => {
+    expect(uuidV7()).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    const early = uuidV7(1000), late = uuidV7(2000);
+    expect(early < late).toBe(true); // lexicographic order follows time
   });
   it('ulid is 26 Crockford base32 chars', () => {
     expect(ulid()).toMatch(/^[0-9A-HJKMNP-TV-Z]{26}$/);

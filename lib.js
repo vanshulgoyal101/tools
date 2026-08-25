@@ -366,7 +366,31 @@ export function parseCronField(f, min, max) {
   return set;
 }
 export function describeCron(parts) {
-  return `Runs at minute [${parts[0]}], hour [${parts[1]}], day-of-month [${parts[2]}], month [${parts[3]}], weekday [${parts[4]}].`;
+  if (!Array.isArray(parts) || parts.length !== 5) return '';
+  const [mi, ho, dom, mon, dow] = parts;
+  const MONTHS = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const isNum = (s) => /^\d+$/.test(s);
+  const rangeOf = (s) => { const m = /^(\d+)-(\d+)$/.exec(s); return m ? [m[1], m[2]] : null; };
+  const miStep = /^\*\/(\d+)$/.exec(mi), hoRange = rangeOf(ho);
+  let time;
+  if (mi === '*' && ho === '*') time = 'Every minute';
+  else if (miStep && ho === '*') time = `Every ${miStep[1]} minutes`;
+  else if (miStep && hoRange) time = `Every ${miStep[1]} minutes, between ${pad2(hoRange[0])}:00 and ${pad2(hoRange[1])}:59`;
+  else if (miStep && isNum(ho)) time = `Every ${miStep[1]} minutes during the ${pad2(ho)}:00 hour`;
+  else if (isNum(mi) && ho === '*') time = `At minute ${mi} of every hour`;
+  else if (isNum(mi) && isNum(ho)) time = `At ${pad2(ho)}:${pad2(mi)}`;
+  else if (isNum(mi) && hoRange) time = `At minute ${mi}, between ${pad2(hoRange[0])}:00 and ${pad2(hoRange[1])}:00`;
+  else if (mi === '*' && isNum(ho)) time = `Every minute during the ${pad2(ho)}:00 hour`;
+  else time = `At minute ${mi}` + (ho === '*' ? '' : `, hour ${ho}`);
+  const dowClause = (f) => { const r = rangeOf(f); if (r) return `${DAYS[+r[0] % 7]} to ${DAYS[+r[1] % 7]}`; return f.split(',').map((d) => isNum(d) ? DAYS[+d % 7] : d).join(', '); };
+  const monClause = (f) => { const r = rangeOf(f); if (r) return `${MONTHS[+r[0]]} to ${MONTHS[+r[1]]}`; return f.split(',').map((d) => isNum(d) ? MONTHS[+d] : d).join(', '); };
+  const clauses = [time];
+  if (dom !== '*') clauses.push(isNum(dom) ? `on day ${dom} of the month` : `on day-of-month ${dom}`);
+  if (dow !== '*') clauses.push(`on ${dowClause(dow)}`);
+  if (mon !== '*') clauses.push(`in ${monClause(mon)}`);
+  return clauses.join(', ') + '.';
 }
 // Returns up to `count` future run Dates. Throws on malformed expressions.
 export function cronNextRuns(expr, from = new Date(), count = 6) {
@@ -502,6 +526,20 @@ const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 const NANO_ALPHABET = 'useandom-26T198340PX75pxJACKVERYMINDBUSHWOLF_GQZbfghjklqvwyzrict';
 const PW_ALPHABET = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%^&*-_=+';
 export const uuidV4 = () => globalThis.crypto.randomUUID();
+// UUIDv7: 48-bit big-endian Unix-ms timestamp + version/variant + random — time-sortable.
+export function uuidV7(now = Date.now()) {
+  const b = randBytes(16);
+  b[0] = Math.floor(now / 2 ** 40) & 0xff;
+  b[1] = Math.floor(now / 2 ** 32) & 0xff;
+  b[2] = Math.floor(now / 2 ** 24) & 0xff;
+  b[3] = Math.floor(now / 2 ** 16) & 0xff;
+  b[4] = Math.floor(now / 2 ** 8) & 0xff;
+  b[5] = now & 0xff;
+  b[6] = (b[6] & 0x0f) | 0x70; // version 7
+  b[8] = (b[8] & 0x3f) | 0x80; // variant 10xx
+  const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
 export function ulid(now = Date.now()) {
   let t = now, time = '';
   for (let i = 0; i < 10; i++) { time = CROCKFORD[t % 32] + time; t = Math.floor(t / 32); }

@@ -175,7 +175,7 @@
       <li><b>URL encode</b> — encode / decode URL components &amp; query strings.</li>
       <li><b>JWT decoder</b> — inspect a JSON Web Token's header, payload &amp; claims.</li>
       <li><b>Hash</b> — SHA-1, SHA-256 &amp; SHA-512 of any text.</li>
-      <li><b>ID &amp; random</b> — UUID v4, ULID, nanoid, hex &amp; passwords.</li>
+      <li><b>ID &amp; random</b> — UUID v4/v7, ULID, nanoid, hex &amp; passwords.</li>
       <li><b>Timestamp</b> — convert between Unix time and dates.</li>
       <li><b>Color</b> — convert HEX, RGB &amp; HSL with a picker.</li>
       <li><b>Text</b> — word / character counts &amp; case conversion.</li>
@@ -216,7 +216,7 @@ import {
   diffLines, parseColor, rgbToHsl, rgbToHex,
   describeCron, cronNextRuns, MODEL_PRICES, estimateTokens, parseTimestamp,
   parseCurl, curlToFetch, curlToPython,
-  detectPasteTypes, uuidV4, ulid, nanoid, randomHex, password
+  detectPasteTypes, uuidV4, uuidV7, ulid, nanoid, randomHex, password
 } from './lib.js';
 
 // ---------- helpers ----------
@@ -362,10 +362,11 @@ tool({ id:'hash', emoji:'#️⃣', name:'Hash', blurb:'SHA-256 / SHA-1 / SHA-512
   }});
 
 // ID & random
-tool({ id:'id', emoji:'🆔', name:'ID & random', blurb:'UUID v4, ULID, nanoid, hex & passwords.',
+tool({ id:'id', emoji:'🆔', name:'ID & random', blurb:'UUID v4/v7, ULID, nanoid, hex & passwords.',
   render(root){
     const kind = el('select',{},
       el('option',{value:'uuid'},'UUID v4'),
+      el('option',{value:'uuid7'},'UUID v7 (sortable)'),
       el('option',{value:'ulid'},'ULID (sortable)'),
       el('option',{value:'nanoid'},'nanoid (21 chars)'),
       el('option',{value:'hex'},'Random hex (32)'),
@@ -373,7 +374,7 @@ tool({ id:'id', emoji:'🆔', name:'ID & random', blurb:'UUID v4, ULID, nanoid, 
     const count = el('input',{type:'number',value:'5',min:'1',max:'100'});
     const out = outputBox();
     const one = ()=>{ switch(kind.value){
-      case 'ulid': return ulid(); case 'nanoid': return nanoid();
+      case 'uuid7': return uuidV7(); case 'ulid': return ulid(); case 'nanoid': return nanoid();
       case 'hex': return randomHex(16); case 'pass': return password(20);
       default: return uuidV4(); } };
     const gen = ()=>{ const n=Math.min(100,Math.max(1,Number(count.value)||1)); out.textContent = Array.from({length:n},one).join('\n'); };
