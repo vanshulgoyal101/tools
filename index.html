@@ -828,8 +828,154 @@ function renderHome(){
   setTimeout(()=>ta.focus(),0);
 }
 
+// SEO: Per-tool metadata, keywords, and schemas
+const toolSEO = {
+  json: { 
+    title: 'JSON Formatter — Pretty-Print, Minify & Validate JSON Online',
+    description: 'Instantly format, minify, and validate JSON with configurable indentation. Copy beautified output in seconds. No upload, 100% in-browser.',
+    keywords: 'json formatter, json validator, minify json, pretty print json, json tool'
+  },
+  base64: { 
+    title: 'Base64 Encoder & Decoder — UTF-8 Safe Online Tool',
+    description: 'Encode text to Base64 or decode Base64 to text. UTF-8 safe for emojis, accents, and international characters. Instant conversion, no server.',
+    keywords: 'base64 encode, base64 decode, utf8, encoding, base64 online'
+  },
+  url: { 
+    title: 'URL Encoder & Decoder — Encode & Parse Query Strings Online',
+    description: 'Encode URL components, decode percent-encoded text, and parse query string parameters. View key-value pairs in a table.',
+    keywords: 'url encoder, url decoder, query string parser, percent encoding, urlencode'
+  },
+  jwt: { 
+    title: 'JWT Decoder — Inspect Headers, Payloads & Claims (No Verify)',
+    description: 'Decode and inspect JSON Web Tokens. View header, payload, and claims instantly. Note: Does not verify signatures.',
+    keywords: 'jwt decoder, json web token, jwt parser, bearer token, jwt online'
+  },
+  hash: { 
+    title: 'SHA Hash Generator — SHA-1, SHA-256 & SHA-512 Online',
+    description: 'Generate SHA-1, SHA-256, or SHA-512 hashes of any text. Instant cryptographic hashing with Web Crypto API.',
+    keywords: 'sha256 hash, sha1 hash, sha512 hash, hash generator, cryptographic hash'
+  },
+  id: { 
+    title: 'UUID, ULID & ID Generator — v4, v7, Nanoid & Passwords',
+    description: 'Generate UUIDs (v4, time-sortable v7), ULIDs, nanoids, random hex strings, and secure passwords. Bulk generate and copy.',
+    keywords: 'uuid generator, uuid v4, uuid v7, ulid, nanoid, random password, id generator'
+  },
+  time: { 
+    title: 'Unix Timestamp Converter — Convert Between Dates & Unix Time',
+    description: 'Convert Unix timestamps (seconds/milliseconds) to dates. Show ISO 8601, local time, and UTC. Auto-detects format.',
+    keywords: 'unix timestamp, epoch converter, date time converter, milliseconds, timestamp online'
+  },
+  color: { 
+    title: 'Color Converter — HEX ⇄ RGB ⇄ HSL with Live Picker',
+    description: 'Convert between HEX, RGB, and HSL color formats. Includes color picker for instant conversion and preview swatch.',
+    keywords: 'hex to rgb, rgb to hex, color converter, hsl converter, color picker, color codes'
+  },
+  text: { 
+    title: 'Text Stats & Case Converter — Word Count, Char Count & Case Styles',
+    description: 'Count characters, words, lines, and words without spaces. Convert text to UPPER, lower, Title Case, and trim excess spaces.',
+    keywords: 'text stats, word counter, character counter, case converter, uppercase, lowercase'
+  },
+  diff: { 
+    title: 'Line Diff Tool — Compare Text Line-by-Line',
+    description: 'Compare two blocks of text line-by-line using LCS algorithm. Shows additions, deletions, and context lines clearly.',
+    keywords: 'text diff, line diff, text compare, diff tool, compare files'
+  },
+  regex: { 
+    title: 'Regex Tester — Live Matching, Capture Groups & Replace Preview',
+    description: 'Test regular expressions with live match highlighting, capture groups, and replacement preview. Supports all standard flags.',
+    keywords: 'regex tester, regular expression, regex online, pattern tester, regex tool'
+  },
+  tokens: { 
+    title: 'LLM Token Counter & Cost Estimator — GPT-4, Claude, Gemini',
+    description: 'Estimate LLM token count and calculate input costs for GPT-4o, Claude, Gemini, and other models. Rough heuristic, not official.',
+    keywords: 'token counter, llm tokens, gpt-4 tokens, claude tokens, token estimate, cost calculator'
+  },
+  cron: { 
+    title: 'Cron Expression Explainer & Next Runs Calculator',
+    description: 'Parse cron expressions into plain English descriptions. Preview the next 6 scheduled run times in your local time zone.',
+    keywords: 'cron expression, cron parser, cron job, schedule expression, cron explainer'
+  },
+  yaml: { 
+    title: 'JSON ⇄ YAML Converter — Convert Between Formats Online',
+    description: 'Convert JSON to YAML or YAML to JSON instantly. Supports common subset: block style, flow syntax, no anchors/aliases.',
+    keywords: 'json to yaml, yaml to json, yaml converter, json converter, yaml parser'
+  },
+  jsonts: { 
+    title: 'JSON Tools — TypeScript Types, Sort Keys & Path Query',
+    description: 'Generate TypeScript type definitions from JSON. Sort object keys alphabetically or query values by dot/bracket path notation.',
+    keywords: 'json to typescript, json schema, typescript interface, json query, json path'
+  },
+  curl: { 
+    title: 'cURL to Code — Convert to Fetch & Python Requests',
+    description: 'Convert curl commands to JavaScript Fetch or Python requests code. Extracts method, headers, body, and auth automatically.',
+    keywords: 'curl converter, curl to fetch, curl to python, http converter, api test'
+  },
+  transform: { 
+    title: 'Text Transform — Sort, Dedupe, Slugify & CSV to JSON',
+    description: 'Sort lines, remove duplicates, reverse, shuffle, slugify text, change cases, or convert between CSV and JSON formats.',
+    keywords: 'sort lines, deduplicate, slugify, case converter, csv to json, text tools'
+  },
+  hmac: { 
+    title: 'HMAC & CRC Generator — SHA Checksums & CRC32 Online',
+    description: 'Generate keyed HMAC-SHA hashes (256/384/512) and CRC32 checksums. No key needed for CRC32.',
+    keywords: 'hmac generator, sha256 hmac, crc32 calculator, checksum, hmac online'
+  },
+  qr: { 
+    title: 'QR Code Generator — Create Scannable QR Codes Offline',
+    description: 'Generate QR codes from text or URLs. Byte mode, ECC level M, versions 1–10. Download as PNG. 100% offline.',
+    keywords: 'qr code generator, qr code online, barcode generator, qr scanner'
+  }
+};
+
+function updateSEOTags(toolId){
+  const seo = toolSEO[toolId] || {};
+  const title = seo.title || 'Tools — paste anything, it finds the right dev tool';
+  const keywords = seo.keywords || 'developer tools, json formatter, base64 encode decode';
+  const description = seo.description || 'Private, offline developer toolbox with 19 utilities. 100% in your browser, nothing uploaded.';
+  
+  // Update title and meta tags
+  document.title = title;
+  document.querySelector('meta[name="description"]').content = description;
+  document.querySelector('meta[name="keywords"]').content = keywords;
+  
+  // Update Open Graph tags
+  const tool = tools.find(t => t.id === toolId);
+  if(tool){
+    document.querySelector('meta[property="og:title"]').content = title;
+    document.querySelector('meta[property="og:description"]').content = description;
+    document.querySelector('meta[property="og:url"]').content = `https://tools.vanshul.com/#${toolId}`;
+    document.querySelector('meta[property="og:type"]').content = 'website';
+  }
+  
+  // Update canonical URL
+  document.querySelector('link[rel="canonical"]').href = toolId 
+    ? `https://tools.vanshul.com/#${toolId}` 
+    : 'https://tools.vanshul.com/';
+  
+  // Add per-tool BreadcrumbList schema
+  if(toolId && tool){
+    const schema = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://tools.vanshul.com/" },
+        { "@type": "ListItem", "position": 2, "name": tool.name, "item": `https://tools.vanshul.com/#${toolId}` }
+      ]
+    };
+    let breadcrumbScript = document.getElementById('breadcrumb-schema');
+    if(!breadcrumbScript){
+      breadcrumbScript = document.createElement('script');
+      breadcrumbScript.id = 'breadcrumb-schema';
+      breadcrumbScript.type = 'application/ld+json';
+      document.head.append(breadcrumbScript);
+    }
+    breadcrumbScript.textContent = JSON.stringify(schema);
+  }
+}
+
 function route(){
   const id = location.hash.slice(1);
+  updateSEOTags(id);
   for(const a of nav.querySelectorAll('a')) a.classList.toggle('active', a.getAttribute('href')==='#'+id || (!id && a.dataset.home==='1'));
   const t = tools.find(x=>x.id===id);
   if(!t){ renderHome(); return; }
