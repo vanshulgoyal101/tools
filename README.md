@@ -97,9 +97,19 @@ The pure logic in `lib.js` is covered by a [Vitest](https://vitest.dev) suite
 
 ```sh
 npm install     # first time (uses a temp cache if ~/.npm is locked)
-npm test        # run the suite (48 tests)
-npm run test:coverage
+npm test        # run the suite (62 tests)
+npm run test:watch  # watch mode
+npm run test:coverage  # coverage report
 ```
+
+## Documentation
+
+See the detailed docs for architecture, feature specs, testing strategy, and accessibility:
+
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** — Design philosophy, the three shipped files, testing strategy, known limitations
+- **[TOOLS.md](TOOLS.md)** — Complete specification for each of the 19 tools, edge cases, and test coverage
+- **[TESTING.md](TESTING.md)** — Test strategy, how to run tests, and how to add new tests  
+- **[ACCESSIBILITY.md](ACCESSIBILITY.md)** — WCAG compliance, keyboard navigation, screen reader support
 
 What's covered: base64/UTF-8 round-trips, JSON⇄YAML round-trips, the QR encoder
 (version selection, finder patterns, capacity limits, determinism), CRC32 check
