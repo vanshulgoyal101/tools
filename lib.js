@@ -298,12 +298,23 @@ export function diffLines(aText, bText) {
 /* ------------------------------------------------------------------ *
  * Colours
  * ------------------------------------------------------------------ */
+const clampByte = (n) => Math.max(0, Math.min(255, Math.round(n)));
+export function hslToRgb({ h, s, l }) {
+  h = ((h % 360) + 360) % 360; s = Math.max(0, Math.min(100, s)) / 100; l = Math.max(0, Math.min(100, l)) / 100;
+  const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m0 = l - c / 2;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) [r, g, b] = [c, x, 0]; else if (h < 120) [r, g, b] = [x, c, 0];
+  else if (h < 180) [r, g, b] = [0, c, x]; else if (h < 240) [r, g, b] = [0, x, c];
+  else if (h < 300) [r, g, b] = [x, 0, c]; else [r, g, b] = [c, 0, x];
+  return { r: clampByte((r + m0) * 255), g: clampByte((g + m0) * 255), b: clampByte((b + m0) * 255) };
+}
 export function parseColor(str) {
   str = str.trim();
   let m;
   if ((m = /^#?([0-9a-f]{3})$/i.exec(str))) { const [r, g, b] = m[1].split('').map((c) => parseInt(c + c, 16)); return { r, g, b }; }
   if ((m = /^#?([0-9a-f]{6})$/i.exec(str))) { const i = parseInt(m[1], 16); return { r: (i >> 16) & 255, g: (i >> 8) & 255, b: i & 255 }; }
-  if ((m = /^rgba?\(([^)]+)\)$/i.exec(str))) { const [r, g, b] = m[1].trim().split(/[\s,\/]+/).map((x) => parseInt(x)); if ([r, g, b].some((n) => Number.isNaN(n))) return null; return { r, g, b }; }
+  if ((m = /^rgba?\(([^)]+)\)$/i.exec(str))) { const [r, g, b] = m[1].trim().split(/[\s,\/]+/).map((x) => parseInt(x)); if ([r, g, b].some((n) => Number.isNaN(n))) return null; return { r: clampByte(r), g: clampByte(g), b: clampByte(b) }; }
+  if ((m = /^hsla?\(([^)]+)\)$/i.exec(str))) { const [h, s, l] = m[1].trim().split(/[\s,\/]+/).map((x) => parseFloat(x)); if ([h, s, l].some((n) => Number.isNaN(n))) return null; return hslToRgb({ h, s, l }); }
   return null;
 }
 export function rgbToHsl({ r, g, b }) {
@@ -313,7 +324,7 @@ export function rgbToHsl({ r, g, b }) {
   if (mx !== mn) { const d = mx - mn; s = l > .5 ? d / (2 - mx - mn) : d / (mx + mn); h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; }
   return { h: Math.round(h), s: Math.round(s * 100), l: Math.round(l * 100) };
 }
-export const rgbToHex = ({ r, g, b }) => '#' + [r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('');
+export const rgbToHex = ({ r, g, b }) => '#' + [r, g, b].map((x) => clampByte(x).toString(16).padStart(2, '0')).join('');
 
 /* ------------------------------------------------------------------ *
  * Cron
@@ -325,8 +336,9 @@ export function parseCronField(f, min, max) {
     let lo, hi;
     if (range === '*') { lo = min; hi = max; }
     else if (range.includes('-')) { const [a, b] = range.split('-').map(Number); lo = a; hi = b; }
-    else { lo = hi = parseInt(range); }
+    else { lo = parseInt(range); hi = stepS ? max : lo; } // "a/b" starts at a and steps to max
     if (Number.isNaN(lo) || Number.isNaN(hi) || Number.isNaN(step) || step < 1) throw new Error('Bad field: ' + f);
+    if (lo < min || hi > max || lo > hi) throw new Error('Field out of range: ' + f);
     for (let v = lo; v <= hi; v += step) set.add(v);
   }
   return set;
@@ -451,7 +463,7 @@ export function detectPasteTypes(text) {
   if (/^\d{10}$/.test(t)) { const d = new Date(+t * 1000); found.push({ id: 'time', label: 'Unix timestamp (s)', badge: 'time', text: d.toString() + '\n' + d.toISOString() }); }
   else if (/^\d{13}$/.test(t)) { const d = new Date(+t); found.push({ id: 'time', label: 'Unix timestamp (ms)', badge: 'time', text: d.toString() + '\n' + d.toISOString() }); }
   // UUID
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(t)) found.push({ id: 'id', label: 'UUID', badge: 'v' + t[14], text: 'Valid UUID — version ' + t[14] });
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(t)) found.push({ id: 'id', label: 'UUID', badge: 'v' + t[14], text: 'Valid UUID — version ' + t[14] });
   // Hash digest by length
   const HLEN = { 32: 'MD5', 40: 'SHA-1', 64: 'SHA-256', 128: 'SHA-512' };
   if (/^[0-9a-f]+$/i.test(t) && HLEN[t.length]) found.push({ id: 'hash', label: HLEN[t.length] + ' digest', badge: 'hash', text: 'Looks like a ' + HLEN[t.length] + ' hash (' + t.length + ' hex chars).' });

@@ -8,7 +8,7 @@ import {
   csvToJson, jsonToCsv,
   splitWords, slugify, toCamel, toPascal, toSnake, toKebab, toConstant, titleCase,
   diffLines, DIFF_LIMIT,
-  parseColor, rgbToHsl, rgbToHex,
+  parseColor, rgbToHsl, rgbToHex, hslToRgb,
   parseCronField, describeCron, cronNextRuns,
   estimateTokens,
   parseTimestamp,
@@ -185,6 +185,21 @@ describe('colours', () => {
     expect(rgbToHsl({ r: 255, g: 255, b: 255 })).toEqual({ h: 0, s: 0, l: 100 });
     expect(rgbToHsl({ r: 255, g: 0, b: 0 })).toEqual({ h: 0, s: 100, l: 50 });
   });
+  it('clamps out-of-range rgb instead of producing malformed hex', () => {
+    expect(parseColor('rgb(300, -5, 128)')).toEqual({ r: 255, g: 0, b: 128 });
+    expect(rgbToHex({ r: 300, g: -5, b: 128 })).toBe('#ff0080');
+  });
+  it('parses hsl() input (the tool advertises hex, rgb or hsl)', () => {
+    const c = parseColor('hsl(225, 100%, 74%)');
+    expect(c.b).toBe(255);
+    expect(Math.abs(c.g - 156)).toBeLessThanOrEqual(2);
+    expect(Math.abs(c.r - 124)).toBeLessThanOrEqual(4);
+    expect(parseColor('hsl(0, 100%, 50%)')).toEqual({ r: 255, g: 0, b: 0 });
+  });
+  it('hslToRgb wraps hue and clamps s/l', () => {
+    expect(hslToRgb({ h: 360, s: 100, l: 50 })).toEqual({ r: 255, g: 0, b: 0 });
+    expect(hslToRgb({ h: 0, s: 200, l: 150 })).toEqual({ r: 255, g: 255, b: 255 });
+  });
 });
 
 describe('cron', () => {
@@ -193,6 +208,15 @@ describe('cron', () => {
     expect([...parseCronField('1-3', 0, 59)]).toEqual([1, 2, 3]);
     expect([...parseCronField('5', 0, 59)]).toEqual([5]);
     expect(() => parseCronField('bad', 0, 59)).toThrow();
+  });
+  it('treats a/b as start-at-a step-b up to max (not just {a})', () => {
+    expect([...parseCronField('5/10', 0, 59)]).toEqual([5, 15, 25, 35, 45, 55]);
+    expect([...parseCronField('5-30/10', 0, 59)]).toEqual([5, 15, 25]);
+  });
+  it('rejects out-of-range and inverted fields', () => {
+    expect(() => parseCronField('99', 0, 59)).toThrow(/out of range/);
+    expect(() => parseCronField('5-70', 0, 59)).toThrow(/out of range/);
+    expect(() => parseCronField('30-10', 0, 59)).toThrow(/out of range/);
   });
   it('describes an expression', () => {
     expect(describeCron('*/5 9 * * 1'.split(' '))).toContain('minute [*/5]');
@@ -264,6 +288,10 @@ describe('Smart Paste detection', () => {
   it('detects a UUID', () => {
     const found = detectPasteTypes('550e8400-e29b-41d4-a716-446655440000');
     expect(found.some((f) => f.id === 'id')).toBe(true);
+  });
+  it('detects modern UUID v7', () => {
+    const found = detectPasteTypes('017f22e2-79b0-7cc3-98c4-dc0c0c07398f');
+    expect(found.some((f) => f.id === 'id' && f.badge === 'v7')).toBe(true);
   });
   it('detects a hex colour', () => {
     const found = detectPasteTypes('#7c9cff');

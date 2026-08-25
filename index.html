@@ -263,8 +263,9 @@ tool({ id:'json', emoji:'{ }', name:'JSON formatter', blurb:'Pretty-print, minif
       el('option',{value:'4'},'4 spaces'),
       el('option',{value:'\t'},'Tab'));
     const run = (min)=>{
+      if(!inp.value.trim()){ out.classList.remove('err'); out.textContent=''; return; }
       try{
-        const val = JSON.parse(inp.value || 'null');
+        const val = JSON.parse(inp.value);
         out.classList.remove('err');
         out.textContent = min ? JSON.stringify(val) : JSON.stringify(val, null, indent.value==='\t'?'\t':Number(indent.value));
       }catch(e){ out.classList.add('err'); out.textContent = 'Invalid JSON: '+e.message; }
@@ -341,14 +342,19 @@ tool({ id:'hash', emoji:'#️⃣', name:'Hash', blurb:'SHA-256 / SHA-1 / SHA-512
   render(root){
     const inp = el('textarea',{placeholder:'Text to hash…'});
     const box = el('div',{class:'kv'});
+    let seq=0;
     const run = async ()=>{
-      box.innerHTML='';
+      const mine=++seq;
       const data = new TextEncoder().encode(inp.value);
+      const rows=[];
       for(const alg of ['SHA-1','SHA-256','SHA-512']){
         const buf = await crypto.subtle.digest(alg, data);
-        const hex = [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
-        box.append(el('div',{class:'k'},alg), el('div',{onclick:(e)=>copy(hex,e.target),title:'click to copy',style:'cursor:pointer;word-break:break-all'},hex));
+        rows.push([alg, [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('')]);
       }
+      if(mine!==seq) return; // a newer keystroke started; drop this stale result
+      box.innerHTML='';
+      for(const [alg,hex] of rows)
+        box.append(el('div',{class:'k'},alg), el('div',{onclick:(e)=>copy(hex,e.target),title:'click to copy',style:'cursor:pointer;word-break:break-all'},hex));
     };
     inp.addEventListener('input',run);
     root.append(field('Input', inp), field('Digests (click to copy)', box));
@@ -649,15 +655,18 @@ tool({ id:'hmac', emoji:'🔐', name:'HMAC & CRC', blurb:'HMAC-SHA (keyed) and C
     const key = el('input',{type:'text',placeholder:'Secret key (for HMAC)'});
     const alg = el('select',{}, el('option',{},'SHA-256'), el('option',{},'SHA-384'), el('option',{},'SHA-512'));
     const box = el('div',{class:'kv'});
+    let seq=0;
     const run=async()=>{
-      box.innerHTML='';
-      const add=(k,v)=>box.append(el('div',{class:'k'},k),el('div',{onclick:(e)=>copy(v,e.target),style:'cursor:pointer;word-break:break-all'},v));
-      add('CRC32', crc32(msg.value));
+      const mine=++seq;
+      const rows=[['CRC32', crc32(msg.value)]];
       if(key.value){
         const ck=await crypto.subtle.importKey('raw', new TextEncoder().encode(key.value), {name:'HMAC',hash:alg.value}, false, ['sign']);
         const sig=await crypto.subtle.sign('HMAC', ck, new TextEncoder().encode(msg.value));
-        add('HMAC-'+alg.value, [...new Uint8Array(sig)].map(b=>b.toString(16).padStart(2,'0')).join(''));
-      } else add('HMAC', '(enter a key)');
+        rows.push(['HMAC-'+alg.value, [...new Uint8Array(sig)].map(b=>b.toString(16).padStart(2,'0')).join('')]);
+      } else rows.push(['HMAC', '(enter a key)']);
+      if(mine!==seq) return; // drop stale result if a newer keystroke started
+      box.innerHTML='';
+      for(const [k,v] of rows) box.append(el('div',{class:'k'},k),el('div',{onclick:(e)=>copy(v,e.target),style:'cursor:pointer;word-break:break-all'},v));
     };
     [msg,key].forEach(x=>x.addEventListener('input',run)); alg.addEventListener('change',run);
     root.append(field('Message', msg), field('Key', key), field('HMAC algorithm', alg), field('Results (click to copy)', box));
