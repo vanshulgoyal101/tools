@@ -113,6 +113,17 @@ describe('shipped app DOM interactions', () => {
     expect(card?.querySelector('a')?.getAttribute('href')).toBe('#json');
   });
 
+  it('detects a cron expression from Smart Paste and links to the cron tool', () => {
+    const window = boot();
+    const { document } = window;
+    input(window, document.querySelector('.smart textarea'), '*/5 9-17 * * 1-5');
+
+    const card = [...document.querySelectorAll('.dcard')].find((c) => c.textContent.includes('Cron expression'));
+    expect(card).toBeDefined();
+    expect(card.textContent).toMatch(/every 5 minutes/i);
+    expect(card.querySelector('a').getAttribute('href')).toBe('#cron');
+  });
+
   it('opens the command palette and routes with keyboard selection', () => {
     const window = boot();
     const { document } = window;

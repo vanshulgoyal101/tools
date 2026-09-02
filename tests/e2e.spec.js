@@ -266,6 +266,12 @@ test.describe('Tools E2E smoke', () => {
     await expect(page.locator('.grid')).not.toContainText('JSON formatter');
   });
 
+  test('Smart Paste: detects a cron expression', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('.smart textarea').fill('*/5 9-17 * * 1-5');
+    await expect(page.locator('.dcard .t', { hasText: 'Cron expression' })).toBeVisible();
+  });
+
   test('Command palette: jump to base64', async ({ page }) => {
     await page.goto('/');
     await page.keyboard.press('Control+k');

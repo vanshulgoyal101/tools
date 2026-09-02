@@ -539,6 +539,10 @@ Each tool is documented with:
 8. **UUID**: Pattern `[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}` (versions 1–8)
 9. **Hash digests**: Hex string matching known lengths (32→MD5, 40→SHA-1, 64→SHA-256, 128→SHA-512)
 10. **Integer**: Decimal or negative integer, parsed to hex/octal/binary
+11. **URL**: Absolute `http(s)` URL, with its query parameters listed
+12. **Data URI**: `data:<media-type>[;base64],<payload>` with decoded byte size
+13. **Base32**: Uppercase RFC 4648 alphabet + valid decode + >85% printable
+14. **Cron expression**: Five fields that the cron parser accepts, described in plain English with the next run
 
 **Implementation**: `detectPasteTypes()`, `printableRatio()`.
 

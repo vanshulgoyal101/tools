@@ -748,12 +748,46 @@ export function detectPasteTypes(text) {
       found.push({ id: 'jwt', label: 'JWT', badge: 'auth token', text: 'header  ' + JSON.stringify(H) + '\npayload ' + JSON.stringify(P) + (notes.length ? '\n' + notes.join(' · ') : '') });
     }
   }
+  // Data URI
+  const dataUri = t.match(/^data:([\w.+-]+\/[\w.+-]+)?((?:;[\w-]+=[\w-]+)*)(;base64)?,([\s\S]*)$/i);
+  if (dataUri) {
+    const mime = dataUri[1] || 'text/plain';
+    const isB64 = Boolean(dataUri[3]);
+    const payload = dataUri[4] || '';
+    let bytes = null;
+    try {
+      bytes = isB64 ? b64ToBytes(payload.replace(/\s+/g, '')).length : encU8(decodeURIComponent(payload)).length;
+    } catch { bytes = null; }
+    found.push({
+      id: 'datauri',
+      label: 'Data URI',
+      badge: mime,
+      text: `${mime} · ${isB64 ? 'base64' : 'plain'}${bytes === null ? '' : ` · ${bytes} bytes decoded`}`,
+    });
+  }
   // JSON
   if (/^[\[{]/.test(t)) { try { const v = JSON.parse(t); found.push({ id: 'json', label: 'JSON', badge: 'data', text: JSON.stringify(v, null, 2) }); } catch { /* not json */ } }
   // URL-encoded
   if (/%[0-9A-Fa-f]{2}/.test(t)) { try { const d = decodeURIComponent(t); if (d !== t) found.push({ id: 'url', label: 'URL-decoded', badge: 'encoded', text: d }); } catch { /* malformed */ } }
+  // URL
+  if (/^https?:\/\/\S+$/i.test(t)) {
+    const pairs = parseQuery(t);
+    found.push({
+      id: 'url',
+      label: 'URL',
+      badge: pairs.length ? `${pairs.length} param${pairs.length === 1 ? '' : 's'}` : 'link',
+      text: pairs.length
+        ? pairs.map(([k, v]) => `${k} = ${v === '' ? '(empty)' : v}`).join('\n')
+        : 'No query parameters.',
+    });
+  }
   // Base64
   if (/^[A-Za-z0-9+/]+={0,2}$/.test(t) && t.length >= 8 && t.length % 4 === 0) { let d = null; try { d = b64Decode(t); } catch { d = null; } if (d && d !== t && printableRatio(d) > 0.85) found.push({ id: 'base64', label: 'Base64-decoded', badge: 'encoded', text: d }); }
+  // Base32 (uppercase alphabet keeps this from firing on most Base64)
+  if (/^[A-Z2-7]+={0,6}$/.test(t) && t.replace(/=+$/, '').length >= 8) {
+    try { const d = base32DecodeText(t); if (d && printableRatio(d) > 0.85) found.push({ id: 'base32', label: 'Base32-decoded', badge: 'encoded', text: d }); }
+    catch { /* not base32 */ }
+  }
   // Hex colour
   if (/^#?[0-9a-fA-F]{6}$|^#?[0-9a-fA-F]{3}$/.test(t)) { const h = t.replace('#', ''); const full = h.length === 3 ? [...h].map((c) => c + c).join('') : h; const hex = '#' + full.toLowerCase(); const n = parseInt(full, 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255; found.push({ id: 'color', label: 'Colour', badge: hex, color: hex, text: `rgb(${r}, ${g}, ${b})` }); }
   // Unix timestamp
@@ -764,6 +798,19 @@ export function detectPasteTypes(text) {
   // Hash digest by length
   const HLEN = { 32: 'MD5', 40: 'SHA-1', 64: 'SHA-256', 128: 'SHA-512' };
   if (/^[0-9a-f]+$/i.test(t) && HLEN[t.length]) found.push({ id: 'hash', label: HLEN[t.length] + ' digest', badge: 'hash', text: 'Looks like a ' + HLEN[t.length] + ' hash (' + t.length + ' hex chars).' });
+  // Cron expression (validity is decided by the parser, not the shape)
+  const cronFields = t.split(/\s+/);
+  if (cronFields.length === 5 && cronFields.every((f) => /^[\d*/,-]+$/.test(f))) {
+    try {
+      const next = cronNextRuns(t, new Date(), 1);
+      found.push({
+        id: 'cron',
+        label: 'Cron expression',
+        badge: 'schedule',
+        text: describeCron(cronFields) + (next[0] ? `\nNext run: ${next[0].toLocaleString()}` : ''),
+      });
+    } catch { /* not a valid cron */ }
+  }
   // Integer -> radix conversions
   if (/^-?\d+$/.test(t) && t.length <= 15) { const n = parseInt(t, 10); if (!Number.isNaN(n)) found.push({ id: 'transform', label: 'Number', badge: 'radix', text: `hex 0x${(n >>> 0).toString(16)}   ·   oct 0o${(n >>> 0).toString(8)}   ·   bin 0b${(n >>> 0).toString(2)}` }); }
   return found;

@@ -481,6 +481,30 @@ describe('Smart Paste detection', () => {
     const found = detectPasteTypes('1700000000');
     expect(found.some((f) => f.id === 'time')).toBe(true);
   });
+  it('detects a URL and lists its query parameters', () => {
+    const hit = detectPasteTypes('https://example.com/x?a=1&b=hello%20world').find((f) => f.label === 'URL');
+    expect(hit.badge).toBe('2 params');
+    expect(hit.text).toContain('b = hello world');
+  });
+  it('reports a URL without a query as a plain link', () => {
+    const hit = detectPasteTypes('https://example.com/x').find((f) => f.label === 'URL');
+    expect(hit.badge).toBe('link');
+  });
+  it('detects a data URI and reports its media type', () => {
+    const hit = detectPasteTypes('data:image/png;base64,iVBORw0KGgo=').find((f) => f.id === 'datauri');
+    expect(hit.badge).toBe('image/png');
+    expect(hit.text).toContain('base64');
+  });
+  it('detects a valid cron expression and rejects an out-of-range one', () => {
+    const hit = detectPasteTypes('*/5 9-17 * * 1-5').find((f) => f.id === 'cron');
+    expect(hit.text).toMatch(/every 5 minutes/i);
+    expect(detectPasteTypes('1 2 3 40 5').some((f) => f.id === 'cron')).toBe(false);
+  });
+  it('detects Base32 without firing on ordinary prose', () => {
+    const hit = detectPasteTypes('MZXW6YTBOI======').find((f) => f.id === 'base32');
+    expect(hit.text).toBe('foobar');
+    expect(detectPasteTypes('hello there friend').some((f) => f.id === 'base32')).toBe(false);
+  });
   it('returns nothing for empty input', () => {
     expect(detectPasteTypes('')).toEqual([]);
   });
