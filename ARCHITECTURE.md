@@ -79,7 +79,7 @@
 - **No CSS framework** — vanilla CSS with flexbox and grid.
 - **Dark theme by default** — CSS variables are defined in `:root` and can be overridden.
 - **Mobile-first responsive** — uses `@media (min-width: ...)` for larger screens.
-- **Print styles** — hides UI elements for print-friendly output.
+- **Light and dark themes** — follows `prefers-color-scheme`, with a toggle persisted in `localStorage`.
 
 **Error Handling**:
 
@@ -236,7 +236,7 @@ Requires:
 - [x] Number-base converter (radix 2–36).
 - [x] QR code reader (if BarcodeDetector API available; fallback to note).
 - [ ] Comprehensive WCAG 2.1 audit + fixes.
-- [ ] Base32 encoder/decoder (RFC 4648).
+- [x] Base32 encoder/decoder (RFC 4648).
 
 **Out of Scope** (for simplicity):
 

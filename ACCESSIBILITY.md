@@ -33,7 +33,7 @@ This document describes:
 | Focus visible | ✅ | Focused elements have `:focus` style (outline or border) |
 | Keyboard shortcuts | ✅ | Ctrl/Cmd+K opens palette; Enter submits; Esc closes |
 | Tool navigation | ✅ | Arrow keys in palette; Enter to select |
-| Copy button | ✅ | Accessible via Tab + Enter |
+| Copy button | ✅ | Click-to-copy values are real buttons — reachable by Tab and activated with Enter/Space |
 | Modal focus handling | ✅ | Palette takes focus, keeps Tab within search, and restores its trigger on Esc |
 
 ### Screen Reader Support

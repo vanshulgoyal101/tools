@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   encU8, decU8, bytesToB64, b64ToBytes, b64Encode, b64Decode, b64urlDecode,
+  base32Encode, base32Decode, base32EncodeText, base32DecodeText,
   parseQuery, buildQuery,
   jsonToYaml, yamlToJson,
   qrEncode, QR_MAX_BYTES,
@@ -38,6 +39,35 @@ describe('base64 / utf-8', () => {
   it('b64urlDecode handles url-safe alphabet and missing padding', () => {
     const header = b64urlDecode('eyJhbGciOiJIUzI1NiJ9'); // {"alg":"HS256"}
     expect(JSON.parse(header).alg).toBe('HS256');
+  });
+});
+
+describe('base32 (RFC 4648)', () => {
+  const vectors = [
+    ['', ''],
+    ['f', 'MY======'],
+    ['fo', 'MZXQ===='],
+    ['foo', 'MZXW6==='],
+    ['foob', 'MZXW6YQ='],
+    ['fooba', 'MZXW6YTB'],
+    ['foobar', 'MZXW6YTBOI======'],
+  ];
+  it('matches the RFC test vectors', () => {
+    for (const [plain, encoded] of vectors) {
+      expect(base32EncodeText(plain)).toBe(encoded);
+      expect(base32DecodeText(encoded)).toBe(plain);
+    }
+  });
+  it('round-trips UTF-8 and raw bytes', () => {
+    const s = 'h\u00e9llo \u4e16\u754c \ud83d\ude80';
+    expect(base32DecodeText(base32EncodeText(s))).toBe(s);
+    expect([...base32Decode(base32Encode(new Uint8Array([0, 255, 128])))]).toEqual([0, 255, 128]);
+  });
+  it('ignores whitespace and is case-insensitive on decode', () => {
+    expect(base32DecodeText('mzxw6 ytb oi======')).toBe('foobar');
+  });
+  it('rejects characters outside the alphabet', () => {
+    expect(() => base32DecodeText('MZXW6YTB1')).toThrow(/invalid base32/i);
   });
 });
 

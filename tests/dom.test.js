@@ -80,7 +80,7 @@ describe('shipped app DOM interactions', () => {
       .map((link) => ({ id: link.getAttribute('href').slice(1), name: link.textContent.trim() }))
       .filter(({ id }) => id);
 
-    expect(routes).toHaveLength(24);
+    expect(routes).toHaveLength(25);
     expect(routes.map(({ id }) => id)).toEqual(expect.arrayContaining(['hash', 'hmac', 'qr-reader']));
     for(const { id, name } of routes.filter(({ id }) => !['hash', 'hmac'].includes(id))){
       window.location.hash = id;
@@ -94,7 +94,7 @@ describe('shipped app DOM interactions', () => {
     const { document } = window;
 
     expect(document.querySelector('h1')?.textContent).toBe('Paste anything. It finds the tool.');
-    expect(document.querySelector('.tool-count')?.textContent).toBe('24 tools');
+    expect(document.querySelector('.tool-count')?.textContent).toBe('25 tools');
     document.querySelector('button[data-category="Security"]')?.click();
 
     expect(document.querySelector('.tool-count')?.textContent).toBe('3 tools in Security');
@@ -227,6 +227,32 @@ describe('shipped app DOM interactions', () => {
     expect(document.querySelector('[role="status"]')?.textContent).toBe('https://tools.vanshul.com');
     expect(document.querySelector('.image-preview')?.getAttribute('src')).toBe('blob:local-qr');
     expect(revokedUrl).toBe('blob:local-qr');
+  });
+
+  it('encodes and decodes Base32 through the tool buttons', () => {
+    const window = boot('#base32');
+    const { document } = window;
+    const source = document.querySelector('textarea');
+    const output = document.querySelector('[role="status"]');
+
+    source.value = 'foobar';
+    document.querySelector('button.primary').click();
+    expect(output.textContent).toBe('MZXW6YTBOI======');
+
+    source.value = 'MZXW6YTBOI======';
+    [...document.querySelectorAll('button')].find((b) => b.textContent === '← Decode').click();
+    expect(output.textContent).toBe('foobar');
+  });
+
+  it('exposes click-to-copy values as keyboard-reachable buttons', async () => {
+    const window = boot('#color');
+    const { document } = window;
+    const cells = document.querySelectorAll('.kv button.copycell');
+    expect(cells.length).toBeGreaterThan(0);
+
+    cells[0].click();
+    await waitFor(window, () => cells[0].textContent === 'Copied ✓');
+    expect(cells[0].textContent).toBe('Copied ✓');
   });
 
   it('escapes and unescapes HTML through the Escape tool buttons', () => {

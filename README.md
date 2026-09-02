@@ -1,7 +1,7 @@
 # tools.vanshul.com
 
 A **privacy-first, offline developer toolbox**. A single self-contained page with
-**24 everyday utilities plus a Smart Paste box** that run **100% in your browser**
+**25 everyday utilities plus a Smart Paste box** that run **100% in your browser**
 — nothing is ever uploaded, and everything works offline (installable as a PWA).
 
 ## The wedge: Smart Paste + ⌘K palette
@@ -41,6 +41,7 @@ Everything else is still a click away in the tool grid below.
 | Image → data URI | Turn a local image into a data URI or CSS background |
 | QR reader | Read a QR code from a local image when the browser supports `BarcodeDetector` |
 | Escape | Escape & unescape HTML entities, JS strings and regex literals |
+| Base32 | Encode & decode Base32 (RFC 4648) |
 | cURL → code | Turn a `curl` command into `fetch` / Python `requests` |
 | Transform | Sort/dedupe lines, slugify, case styles, CSV ⇄ JSON |
 | HMAC & CRC | Keyed HMAC-SHA and CRC32 checksums |

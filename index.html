@@ -13,7 +13,7 @@
   }catch(e){}
 </script>
 <title>Tools — paste anything, it finds the right dev tool</title>
-<meta name="description" content="Smart Paste: drop in a JWT, JSON, Base64, URL-encoded text, a colour, a timestamp or a UUID and it auto-detects and decodes it. Plus 24 dev utilities and a ⌘K command palette — all 100% in your browser, offline, nothing uploaded.">
+<meta name="description" content="Smart Paste: drop in a JWT, JSON, Base64, URL-encoded text, a colour, a timestamp or a UUID and it auto-detects and decodes it. Plus 25 dev utilities and a ⌘K command palette — all 100% in your browser, offline, nothing uploaded.">
 <meta name="keywords" content="developer tools, json formatter, base64 encode decode, jwt decoder, sha-256 hash, uuid generator, regex tester, cron expression, json to yaml, json to typescript, curl to fetch, hmac generator, qr code generator, unix timestamp converter, url encoder, offline dev tools">
 <meta name="author" content="Vanshul Goyal">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
@@ -32,7 +32,7 @@
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Tools — paste anything, it finds the right dev tool">
-<meta name="twitter:description" content="Smart Paste + 24 offline developer utilities that run entirely in your browser. Nothing uploaded.">
+<meta name="twitter:description" content="Smart Paste + 25 offline developer utilities that run entirely in your browser. Nothing uploaded.">
 <meta name="twitter:image" content="https://tools.vanshul.com/og.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%B0%3C/text%3E%3C/svg%3E">
@@ -47,7 +47,7 @@
   "browserRequirements": "Requires JavaScript",
   "isAccessibleForFree": true,
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-  "description": "A private, offline-first collection of 24 everyday developer utilities plus a Smart Paste box that auto-detects JWTs, JSON, Base64, colours, timestamps and UUIDs. Everything runs entirely in the browser — nothing is uploaded.",
+  "description": "A private, offline-first collection of 25 everyday developer utilities plus a Smart Paste box that auto-detects JWTs, JSON, Base64, colours, timestamps and UUIDs. Everything runs entirely in the browser — nothing is uploaded.",
   "author": { "@type": "Person", "name": "Vanshul Goyal", "url": "https://vanshul.com" },
   "featureList": [
     "JSON formatter (pretty-print, minify, validate)",
@@ -73,7 +73,8 @@
     "HMAC-SHA and CRC32 checksums",
     "QR code generator",
     "QR code reader",
-    "HTML, JS string and regex escaping"
+    "HTML, JS string and regex escaping",
+    "Base32 encoder and decoder (RFC 4648)"
   ]
 }
 </script>
@@ -161,6 +162,10 @@
   .out.err{color:var(--bad)}
   .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-family:var(--mono);font-size:.9rem}
   .kv .k{color:var(--muted)}
+  .kv .row{display:contents}
+  button.copycell{all:unset;cursor:pointer;font:inherit;color:inherit;word-break:break-all}
+  button.copycell:hover{color:var(--accent)}
+  button.copycell:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
   .pill{display:inline-block;background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:.8rem;color:var(--muted);margin:2px 4px 2px 0}
   .swatch{width:100%;height:64px;border-radius:10px;border:1px solid var(--line);margin-top:8px}
   .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -205,7 +210,7 @@
 <footer class="site-info">
   <div class="wrap">
     <h2>Free, private, offline developer tools</h2>
-    <p><strong>tools.vanshul.com</strong> is a collection of 24 everyday developer utilities plus a Smart Paste box that auto-detects whatever you drop in. Every conversion runs entirely in your browser using plain JavaScript and the Web Crypto API — nothing is ever uploaded to a server, there are no accounts or ads, and the whole app works offline as an installable PWA.</p>
+    <p><strong>tools.vanshul.com</strong> is a collection of 25 everyday developer utilities plus a Smart Paste box that auto-detects whatever you drop in. Every conversion runs entirely in your browser using plain JavaScript and the Web Crypto API — nothing is ever uploaded to a server, there are no accounts or ads, and the whole app works offline as an installable PWA.</p>
     <h3>Every tool included</h3>
     <ul class="toollist">
       <li><b>JSON formatter</b> — pretty-print, minify &amp; validate JSON.</li>
@@ -232,6 +237,7 @@
       <li><b>QR code</b> — generate a scannable QR code, fully offline.</li>
       <li><b>QR reader</b> — read a QR code from a local image, without uploading it.</li>
       <li><b>Escape</b> — escape &amp; unescape HTML entities, JS strings and regex literals.</li>
+      <li><b>Base32</b> — encode &amp; decode Base32 (RFC 4648).</li>
       <li><b>Smart Paste</b> — paste a JWT, JSON, Base64, colour, timestamp or UUID and it auto-detects &amp; decodes it.</li>
     </ul>
     <h3>Frequently asked questions</h3>
@@ -254,6 +260,7 @@
 <script type="module">
 import {
   encU8, decU8, bytesToB64, b64ToBytes, jsonToYaml, yamlToJson, qrEncode,
+  base32EncodeText, base32DecodeText,
   crc32, jsonToTs, jsonPathQuery, sortKeys,
   csvToJson, jsonToCsv, slugify, toCamel, toPascal, toSnake, toKebab, toConstant,
   parseBaseNumber, formatBaseNumber, numberBaseInfo, markdownToHtml,
@@ -264,7 +271,7 @@ import {
   parseCurl, curlToFetch, curlToPython,
   detectPasteTypes, uuidV4, uuidV7, ulid, nanoid, randomHex, password,
   parseQuery
-} from './lib.js?v=6';
+} from './lib.js?v=7';
 
 // ---------- helpers ----------
 const el = (tag, attrs={}, ...kids)=>{
@@ -304,6 +311,11 @@ function field(labelText, node){
   return wrap;
 }
 function outputBox(){ return el('div',{class:'out',role:'status','aria-live':'polite','aria-atomic':'true'}); }
+// Click-to-copy value that is also reachable by keyboard.
+function copyCell(value, display){
+  return el('button',{class:'copycell',type:'button',title:'Copy to clipboard',
+    onclick:(e)=>copy(value,e.currentTarget)}, display ?? value);
+}
 
 // base64 helpers, JSON<->YAML and the QR encoder are imported from ./lib.js (top of module).
 
@@ -312,7 +324,7 @@ const tools = [];
 const tool = (t)=>tools.push(t);
 const categories = {
   Data: ['json','yaml','jsonts','transform','diff','markdown'],
-  Encoding: ['base','base64','url','jwt','qr','qr-reader','escape'],
+  Encoding: ['base','base64','url','jwt','qr','qr-reader','escape','base32'],
   Security: ['hash','hmac','id'],
   'Web & API': ['curl','regex','cron'],
   'Text & Design': ['text','color'],
@@ -471,6 +483,23 @@ tool({ id:'base64', emoji:'📦', name:'Base64', blurb:'Encode & decode Base64 (
       field('Output', out));
   }});
 
+// Base32
+tool({ id:'base32', emoji:'🔠', name:'Base32', blurb:'Encode & decode Base32 (RFC 4648).',
+  render(root){
+    const inp = el('textarea',{placeholder:'Text or Base32…'});
+    const out = outputBox();
+    const enc = ()=>{ try{ out.classList.remove('err'); out.textContent = base32EncodeText(inp.value); }
+      catch{ out.classList.add('err'); out.textContent='Cannot encode'; } };
+    const dec = ()=>{ try{ out.classList.remove('err'); out.textContent = base32DecodeText(inp.value); }
+      catch(e){ out.classList.add('err'); out.textContent=e.message; } };
+    root.append(field('Input', inp),
+      el('div',{class:'btnrow'},
+        el('button',{class:'btn primary',onclick:enc},'Encode →'),
+        el('button',{class:'btn',onclick:dec},'← Decode'),
+        el('button',{class:'btn',onclick:(e)=>copy(out.textContent,e.target)},'Copy')),
+      field('Output', out));
+  }});
+
 // Escape / unescape
 tool({ id:'escape', emoji:'🛡️', name:'Escape', blurb:'Escape & unescape HTML entities, JS strings and regex literals.',
   render(root){
@@ -494,12 +523,14 @@ tool({ id:'url', emoji:'🔗', name:'URL encode', blurb:'Encode / decode URL com
   render(root){
     const inp = el('textarea',{placeholder:'https://example.com/?q=hello world&page=2'});
     const out = outputBox();
-    const qbox = el('div',{class:'kv'});
+    const qbox = el('div',{class:'kv',role:'table','aria-label':'Query parameters'});
     const parse = ()=>{
       qbox.innerHTML='';
       const pairs = parseQuery(inp.value);
-      if(!pairs.length){ qbox.append(el('div',{class:'k'},'—'), el('div',{},'no query parameters found')); return; }
-      for(const [k,v] of pairs) qbox.append(el('div',{class:'k'},k), el('div',{onclick:(e)=>copy(v,e.target),style:'cursor:pointer;word-break:break-all'}, v===''?'(empty)':v));
+      if(!pairs.length){ qbox.append(el('div',{class:'row',role:'row'}, el('div',{class:'k',role:'rowheader'},'—'), el('div',{role:'cell'},'no query parameters found'))); return; }
+      for(const [k,v] of pairs) qbox.append(el('div',{class:'row',role:'row'},
+        el('div',{class:'k',role:'rowheader'},k),
+        el('div',{role:'cell'}, copyCell(v, v===''?'(empty)':v))));
     };
     root.append(field('Input', inp),
       el('div',{class:'btnrow'},
@@ -556,7 +587,7 @@ tool({ id:'hash', emoji:'#️⃣', name:'Hash', blurb:'SHA-256 / SHA-1 / SHA-512
       if(mine!==seq) return; // a newer keystroke started; drop this stale result
       box.innerHTML='';
       for(const [alg,hex] of rows)
-        box.append(el('div',{class:'k'},alg), el('div',{onclick:(e)=>copy(hex,e.target),title:'click to copy',style:'cursor:pointer;word-break:break-all'},hex));
+        box.append(el('div',{class:'k'},alg), copyCell(hex));
     };
     inp.addEventListener('input',run);
     root.append(field('Input', inp), field('Digests (click to copy)', box));
@@ -598,7 +629,7 @@ tool({ id:'time', emoji:'🕑', name:'Timestamp', blurb:'Convert between Unix ti
     const show = (d)=>{
       box.innerHTML='';
       if(isNaN(d)){ box.append(el('div',{class:'k'},'—'), el('div',{},'invalid date')); return; }
-      const add=(k,v)=>box.append(el('div',{class:'k'},k),el('div',{onclick:(e)=>copy(v,e.target),style:'cursor:pointer'},v));
+      const add=(k,v)=>box.append(el('div',{class:'k'},k),copyCell(v));
       add('Unix (s)', String(Math.floor(d.getTime()/1000)));
       add('Unix (ms)', String(d.getTime()));
       add('ISO 8601', d.toISOString());
@@ -629,7 +660,7 @@ tool({ id:'color', emoji:'🎨', name:'Color', blurb:'Convert HEX ⇄ RGB ⇄ HS
       if(!c){ box.append(el('div',{class:'k'},'—'),el('div',{},'unrecognised colour')); return; }
       const h = rgbToHex(c), hsl = rgbToHsl(c);
       sw.style.background = h; picker.value = h;
-      const add=(k,v)=>box.append(el('div',{class:'k'},k),el('div',{onclick:(e)=>copy(v,e.target),style:'cursor:pointer'},v));
+      const add=(k,v)=>box.append(el('div',{class:'k'},k),copyCell(v));
       add('HEX', h); add('RGB', `rgb(${c.r}, ${c.g}, ${c.b})`); add('HSL', `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`);
     };
     inp.addEventListener('input',()=>run(inp.value));
@@ -880,7 +911,7 @@ tool({ id:'hmac', emoji:'🔐', name:'HMAC & CRC', blurb:'HMAC-SHA (keyed) and C
       } else rows.push(['HMAC', '(enter a key)']);
       if(mine!==seq) return; // drop stale result if a newer keystroke started
       box.innerHTML='';
-      for(const [k,v] of rows) box.append(el('div',{class:'k'},k),el('div',{onclick:(e)=>copy(v,e.target),style:'cursor:pointer;word-break:break-all'},v));
+      for(const [k,v] of rows) box.append(el('div',{class:'k'},k),copyCell(v));
     };
     [msg,key].forEach(x=>x.addEventListener('input',run)); alg.addEventListener('change',run);
     root.append(field('Message', msg), field('Key', key), field('HMAC algorithm', alg), field('Results (click to copy)', box));
@@ -1160,6 +1191,11 @@ const toolSEO = {
     description: 'Escape or unescape HTML entities, JavaScript/JSON string literals, and regular-expression metacharacters. Runs entirely in your browser.',
     keywords: 'html escape, html entities, unescape html, javascript string escape, regex escape, json string escape'
   },
+  base32: {
+    title: 'Base32 Encoder & Decoder — RFC 4648 Online Tool',
+    description: 'Encode text to Base32 or decode Base32 back to text using the RFC 4648 alphabet. UTF-8 safe and runs entirely in your browser.',
+    keywords: 'base32 encode, base32 decode, rfc 4648, base32 online, base32 converter'
+  },
   url: { 
     title: 'URL Encoder & Decoder — Encode & Parse Query Strings Online',
     description: 'Encode URL components, decode percent-encoded text, and parse query string parameters. View key-value pairs in a table.',
@@ -1251,7 +1287,7 @@ function updateSEOTags(toolId){
   const seo = toolSEO[toolId] || {};
   const title = seo.title || 'Tools — paste anything, it finds the right dev tool';
   const keywords = seo.keywords || 'developer tools, json formatter, base64 encode decode';
-  const description = seo.description || 'Private, offline developer toolbox with 24 utilities. 100% in your browser, nothing uploaded.';
+  const description = seo.description || 'Private, offline developer toolbox with 25 utilities. 100% in your browser, nothing uploaded.';
   
   // Update title and meta tags
   document.title = title;

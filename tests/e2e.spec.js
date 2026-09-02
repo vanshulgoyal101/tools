@@ -205,6 +205,28 @@ test.describe('Tools E2E smoke', () => {
     }
   });
 
+  test('Base32: encodes text using RFC 4648', async ({ page }) => {
+    await gotoTool(page, 'base32');
+    await page.getByLabel('Input').fill('foobar');
+    await page.getByRole('button', { name: 'Encode' }).click();
+    await expect(page.getByLabel('Output')).toHaveText('MZXW6YTBOI======');
+  });
+
+  test('Copy cells: are focusable and activate with the keyboard', async ({ page }) => {
+    await gotoTool(page, 'color');
+    const cell = page.locator('.kv button.copycell').first();
+    const label = page.locator('.kv .k').first();
+    const cellBox = await cell.boundingBox();
+    const labelBox = await label.boundingBox();
+    expect(cellBox.x).toBeGreaterThan(labelBox.x);
+    expect(Math.abs(cellBox.y - labelBox.y)).toBeLessThan(24);
+
+    await cell.focus();
+    await expect(cell).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(cell).toHaveText(/Copied|Copy failed/);
+  });
+
   test('Escape tool: escapes HTML entities', async ({ page }) => {
     await gotoTool(page, 'escape');
     await page.getByLabel('Input').fill('<b>Tom & Jerry</b>');
