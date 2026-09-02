@@ -1,7 +1,7 @@
 # tools.vanshul.com
 
 A **privacy-first, offline developer toolbox**. A single self-contained page with
-**19 everyday utilities plus a Smart Paste box** that run **100% in your browser**
+**23 everyday utilities plus a Smart Paste box** that run **100% in your browser**
 — nothing is ever uploaded, and everything works offline (installable as a PWA).
 
 ## The wedge: Smart Paste + ⌘K palette
@@ -22,6 +22,7 @@ Everything else is still a click away in the tool grid below.
 | Tool | What it does |
 | --- | --- |
 | JSON formatter | Pretty-print, minify & validate JSON |
+| Base converter | Convert signed numbers between bases 2–36 |
 | Base64 | Encode / decode (UTF-8 safe) |
 | URL encode | Encode / decode URL components |
 | JWT decoder | Inspect header, payload & claims (no signature check) |
@@ -36,6 +37,9 @@ Everything else is still a click away in the tool grid below.
 | Cron | Explain a cron expression & preview next runs |
 | JSON ⇄ YAML | Convert between JSON and YAML (common subset) |
 | JSON tools | JSON → TypeScript types, sort keys & path query |
+| Markdown preview | Render headings, emphasis, links and lists locally |
+| Image → data URI | Turn a local image into a data URI or CSS background |
+| QR reader | Read a QR code from a local image when the browser supports `BarcodeDetector` |
 | cURL → code | Turn a `curl` command into `fetch` / Python `requests` |
 | Transform | Sort/dedupe lines, slugify, case styles, CSV ⇄ JSON |
 | HMAC & CRC | Keyed HMAC-SHA and CRC32 checksums |
@@ -66,7 +70,9 @@ import { encU8, decU8, bytesToB64, b64ToBytes, jsonToYaml, yamlToJson, qrEncode 
 ```
 
 Keeping the logic in `lib.js` means **the code that ships is the code that is
-tested** — see [Testing](#testing). Every tool is a hash route (`#json`,
+tested** — see [Testing](#testing). The jsdom interaction harness also executes
+the exact inline app module from `index.html`, with the real `lib.js` exports,
+to cover its handlers and hash routes. Every tool is a hash route (`#json`,
 `#base64`, …) so any tool is directly linkable.
 
 ## Files
@@ -97,13 +103,14 @@ The pure logic in `lib.js` is covered by a [Vitest](https://vitest.dev) suite
 
 ```sh
 npm install     # first time (uses a temp cache if ~/.npm is locked)
-npm test        # run the suite (62 tests)
+npm test        # run the unit and DOM suites
+npm run test:dom  # fast jsdom interaction tests for the shipped UI module
 npm run test:watch  # watch mode
 npm run test:coverage  # coverage report
 ```
 
 ```sh
-npm run test:e2e  # run Playwright E2E smoke suite (24 tests, Chromium-validated)
+npm run test:e2e  # run Playwright E2E smoke suite (29 scenarios across supported browsers)
 npm run test:e2e:ui  # interactive test UI
 npm run test:e2e:debug  # debug single test
 ```
@@ -113,7 +120,7 @@ npm run test:e2e:debug  # debug single test
 See the detailed docs for architecture, feature specs, testing strategy, and accessibility:
 
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — Design philosophy, the three shipped files, testing strategy, known limitations
-- **[TOOLS.md](TOOLS.md)** — Complete specification for each of the 19 tools, edge cases, and test coverage
+- **[TOOLS.md](TOOLS.md)** — Complete specification for each tool, edge cases, and test coverage
 - **[TESTING.md](TESTING.md)** — Test strategy, how to run tests, and how to add new tests  
 - **[ACCESSIBILITY.md](ACCESSIBILITY.md)** — WCAG compliance, keyboard navigation, screen reader support
 
@@ -145,5 +152,4 @@ cd tools && python3 -m http.server 8081
 
 ## Next tools to add
 
-Markdown preview, number-base converter, image → data-URI, QR reader
-(via `BarcodeDetector`). A cron builder also lives at `cron.vanshul.com`.
+A cron builder also lives at `cron.vanshul.com`.

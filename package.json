@@ -6,6 +6,7 @@
   "description": "Private, offline developer toolbox — tools.vanshul.com. The shipped app (index.html, lib.js, sw.js) has zero runtime dependencies; the packages here are dev-only for the test suite.",
   "scripts": {
     "test": "vitest run",
+    "test:dom": "vitest run tests/dom.test.js",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
@@ -15,6 +16,7 @@
   "devDependencies": {
     "@playwright/test": "^1.62.1",
     "@vitest/coverage-v8": "^3.2.7",
+    "jsdom": "^28.1.0",
     "vitest": "^3.2.7"
   }
 }

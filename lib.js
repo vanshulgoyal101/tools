@@ -320,6 +320,100 @@ export const toKebab = (s) => splitWords(s).map((x) => x.toLowerCase()).join('-'
 export const toConstant = (s) => splitWords(s).map((x) => x.toUpperCase()).join('_');
 export const titleCase = (s) => s.replace(/\w\S*/g, (w) => w[0].toUpperCase() + w.slice(1).toLowerCase());
 
+// Number-base conversion: supports signed integers in radix 2..36.
+export function parseBaseNumber(value, base = 10) {
+  const raw = String(value).trim();
+  if (!raw) throw new Error('Empty input');
+  let s = raw;
+  const sign = s.startsWith('-') ? -1n : 1n;
+  if (s.startsWith('+') || s.startsWith('-')) s = s.slice(1);
+  if (/^0x/i.test(s)) { s = s.slice(2); base = 16; }
+  else if (/^0b/i.test(s)) { s = s.slice(2); base = 2; }
+  else if (/^0o/i.test(s)) { s = s.slice(2); base = 8; }
+  if (!Number.isInteger(base) || base < 2 || base > 36) throw new Error('Base must be between 2 and 36');
+  const digits = '0123456789abcdefghijklmnopqrstuvwxyz';
+  let out = 0n;
+  for (const ch of s) {
+    const idx = digits.indexOf(ch.toLowerCase());
+    if (idx === -1 || idx >= base) throw new Error(`Invalid digit for base ${base}: ${ch}`);
+    out = out * BigInt(base) + BigInt(idx);
+  }
+  return sign * out;
+}
+
+export function formatBaseNumber(value, base = 10) {
+  if (!Number.isInteger(base) || base < 2 || base > 36) throw new Error('Base must be between 2 and 36');
+  const n = BigInt(value);
+  if (n === 0n) return '0';
+  const digits = '0123456789abcdefghijklmnopqrstuvwxyz';
+  const negative = n < 0n;
+  let x = negative ? -n : n;
+  let s = '';
+  while (x > 0n) {
+    const idx = Number(x % BigInt(base));
+    s = digits[idx] + s;
+    x /= BigInt(base);
+  }
+  return negative ? '-' + s : s;
+}
+
+export function convertBaseNumber(value, fromBase, toBase) {
+  const n = parseBaseNumber(value, fromBase);
+  return formatBaseNumber(n, toBase);
+}
+
+export function numberBaseInfo(value, fromBase = 10) {
+  const n = parseBaseNumber(value, fromBase);
+  return {
+    decimal: formatBaseNumber(n, 10),
+    binary: formatBaseNumber(n, 2),
+    octal: formatBaseNumber(n, 8),
+    hex: formatBaseNumber(n, 16),
+    base36: formatBaseNumber(n, 36),
+    signed: n.toString(),
+  };
+}
+
+// Simple markdown-to-HTML renderer for a privacy-first browser tool.
+export function markdownToHtml(input) {
+  const esc = (s) => String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  const inline = (s) => esc(s)
+    .replace(/\[(.+?)\]\((https?:\/\/[\w\-.~:/?#[\]@!$&'()*+,;=%]+|\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+  const lines = String(input || '').split(/\n/);
+  const out = [];
+  let listType = null;
+  let listItems = [];
+  const flushList = () => {
+    if (!listItems.length) return;
+    out.push(listType === 'ol' ? '<ol>' + listItems.map((i) => '<li>' + inline(i) + '</li>').join('') + '</ol>' : '<ul>' + listItems.map((i) => '<li>' + inline(i) + '</li>').join('') + '</ul>');
+    listItems = [];
+    listType = null;
+  };
+
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (!line.trim()) { flushList(); continue; }
+    const heading = line.match(/^(#{1,6})\s+(.*)$/);
+    if (heading) { flushList(); out.push(`<h${heading[1].length}>${inline(heading[2])}</h${heading[1].length}>`); continue; }
+    const ul = line.match(/^[-*+]\s+(.*)$/);
+    if (ul) { if (listType !== 'ul') { flushList(); listType = 'ul'; } listItems.push(ul[1]); continue; }
+    const ol = line.match(/^\d+\.\s+(.*)$/);
+    if (ol) { if (listType !== 'ol') { flushList(); listType = 'ol'; } listItems.push(ol[1]); continue; }
+    flushList();
+    out.push(`<p>${inline(line)}</p>`);
+  }
+  flushList();
+  return out.join('');
+}
+
 // Line diff via LCS. Returns [{ t: ' '|'-'|'+', line }]. Throws if too large.
 export const DIFF_LIMIT = 4_000_000;
 export function diffLines(aText, bText) {

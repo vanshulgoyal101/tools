@@ -6,7 +6,11 @@ All business logic in `lib.js` is tested using [Vitest](https://vitest.dev). Tes
 
 **Current Coverage**: 62 unit tests covering ~90% of lib.js exports.
 
-**E2E Coverage**: 24 Playwright smoke tests covering all 19 tools, Smart Paste, ⌘K, routing, PWA API availability, and mobile viewport behavior.
+**E2E Coverage**: 29 Playwright smoke tests covering all 23 tools, category browsing, Smart Paste, ⌘K, routing, PWA API availability, and mobile viewport behavior.
+
+**DOM Interaction Coverage**: jsdom executes the shipped inline application module and dispatches real input, change, click, and keyboard events for Smart Paste, category filters, command palette routing, JSON formatting, base conversion, Markdown preview, and unknown-route fallback. This catches regressions in the UI handlers without requiring a browser process.
+
+Run this layer directly with `npm run test:dom`. It complements, rather than replaces, Playwright's full-browser coverage.
 
 **Coverage Goals**:
 - ✅ All exported functions have ≥1 test
@@ -57,7 +61,7 @@ Output:
 ```
  RUN  v3.2.7
 
- ✓ tests/lib.test.js (62 tests) 200ms
+ ✓ tests/lib.test.js (65 tests) 200ms
 
  Test Files  1 passed (1)
       Tests  62 passed (62)
@@ -81,7 +85,7 @@ Generates an HTML coverage report (see terminal output for path).
 
 ## Current Test Suite
 
-**File**: `tests/lib.test.js` (389 lines, 62 tests)
+**File**: `tests/lib.test.js` (65 tests)
 
 **Structure**: Organized by feature in `describe()` blocks.
 
@@ -107,7 +111,7 @@ Generates an HTML coverage report (see terminal output for path).
 | **ID & random** | 5 | uuidV4/V7 format, ULID length, nanoid/hex/pass lengths, uniqueness |
 | **Cron descriptions** | 8 | Plain-English descriptions for common patterns |
 
-**Total**: 62 tests
+**Total**: 65 unit tests, 15 jsdom interaction tests, and 29 cross-browser E2E scenarios
 
 ---
 

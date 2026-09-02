@@ -8,6 +8,8 @@ import {
   jsonToTsType, jsonToTs, jsonPathQuery, sortKeys,
   csvToJson, jsonToCsv,
   splitWords, slugify, toCamel, toPascal, toSnake, toKebab, toConstant, titleCase,
+  parseBaseNumber, formatBaseNumber, convertBaseNumber, numberBaseInfo,
+  markdownToHtml,
   diffLines, DIFF_LIMIT,
   parseColor, rgbToHsl, rgbToHex, hslToRgb,
   parseCronField, describeCron, cronNextRuns,
@@ -200,6 +202,31 @@ describe('text transforms', () => {
     expect(toKebab('Hello World')).toBe('hello-world');
     expect(toConstant('hello world')).toBe('HELLO_WORLD');
     expect(titleCase('the quick brown fox')).toBe('The Quick Brown Fox');
+  });
+});
+
+describe('number base conversion', () => {
+  it('converts between common bases and handles signed numbers', () => {
+    expect(convertBaseNumber('255', 10, 16)).toBe('ff');
+    expect(convertBaseNumber('0xFF', 16, 10)).toBe('255');
+    expect(convertBaseNumber('1010', 2, 10)).toBe('10');
+    expect(convertBaseNumber('-42', 10, 16)).toBe('-2a');
+    expect(formatBaseNumber(123456789, 36)).toBe('21i3v9');
+  });
+  it('supports full info payloads', () => {
+    expect(numberBaseInfo('42', 10).hex).toBe('2a');
+    expect(numberBaseInfo('0b101010', 2).decimal).toBe('42');
+  });
+});
+
+describe('markdown preview', () => {
+  it('renders headings, paragraphs, emphasis, links and lists', () => {
+    const html = markdownToHtml('# Title\n\n**bold** and *italic*\n\n- one\n- two\n\n[docs](https://example.com)');
+    expect(html).toContain('<h1>Title</h1>');
+    expect(html).toContain('<strong>bold</strong>');
+    expect(html).toContain('<em>italic</em>');
+    expect(html).toContain('<ul>');
+    expect(html).toContain('<a href="https://example.com"');
   });
 });
 

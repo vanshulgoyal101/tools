@@ -30,6 +30,34 @@ test.describe('Tools E2E smoke', () => {
     await expect(page.locator('.out')).toHaveText('hello');
   });
 
+  test('Base converter: converts decimal to hex', async ({ page }) => {
+    await gotoTool(page, 'base');
+    await page.getByLabel('Value').fill('255');
+    await page.getByLabel('From base').selectOption('10');
+    await page.getByLabel('To base').selectOption('16');
+    await expect(page.getByLabel('Converted result')).toHaveText('ff');
+    await expect(page.getByLabel('Quick views')).toContainText('Binary');
+  });
+
+  test('Markdown preview: renders a heading and list', async ({ page }) => {
+    await gotoTool(page, 'markdown');
+    await page.getByLabel('Markdown').fill('# Notes\n\n- first');
+    await expect(page.getByLabel('Preview').locator('h1')).toHaveText('Notes');
+    await expect(page.getByLabel('Preview').locator('li')).toHaveText('first');
+  });
+
+  test('Image data URI: reads a local image without upload', async ({ page }) => {
+    await gotoTool(page, 'datauri');
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'pixel.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLjdQAAAABJRU5ErkJggg==', 'base64'),
+    });
+    await expect(page.getByLabel('Image details')).toContainText('image/png');
+    await expect(page.getByLabel('Data URI')).toContainText('data:image/png;base64,');
+    await expect(page.locator('.image-preview')).toBeVisible();
+  });
+
   test('URL: parse query parameters', async ({ page }) => {
     await gotoTool(page, 'url');
     await page.getByLabel('Input').fill('https://x.dev/?a=1&b=hello+world');
@@ -166,10 +194,29 @@ test.describe('Tools E2E smoke', () => {
     await expect(page.locator('canvas.qr')).toBeVisible();
   });
 
+  test('QR reader: gives a clear browser-support state', async ({ page }) => {
+    await gotoTool(page, 'qr-reader');
+    const supported = await page.evaluate(() => 'BarcodeDetector' in window);
+    const chooseImage = page.getByRole('button', { name: 'Choose QR image' });
+    if(supported) await expect(chooseImage).toBeEnabled();
+    else {
+      await expect(chooseImage).toBeDisabled();
+      await expect(page.locator('.sub.err')).toContainText('BarcodeDetector API');
+    }
+  });
+
   test('Smart Paste: detects JSON on home', async ({ page }) => {
     await page.goto('/');
     await page.locator('.smart textarea').fill('{"id":1}');
     await expect(page.locator('.dcard .t', { hasText: 'JSON' })).toBeVisible();
+  });
+
+  test('Home: filters the grid by category', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Security' }).click();
+    await expect(page.locator('.tool-count')).toHaveText('3 tools in Security');
+    await expect(page.locator('.grid')).toContainText('HMAC & CRC');
+    await expect(page.locator('.grid')).not.toContainText('JSON formatter');
   });
 
   test('Command palette: jump to base64', async ({ page }) => {

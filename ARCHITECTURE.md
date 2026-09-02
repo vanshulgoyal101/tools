@@ -95,7 +95,7 @@
 
 - **Network-first for the shell** (`index.html`, `sw.js`, root `/`): Try network, fall back to cache.
 - **Cache-first for assets** (`lib.js`, CSS, images): Use cache, fall back to network.
-- **Cache version**: `tools-v4` (manually incremented on deploy if we ship breaking changes to cached assets).
+- **Cache version**: `tools-v5` (manually incremented on deploy if we ship breaking changes to cached assets).
 
 **Registration**: Registered in `index.html` via `navigator.serviceWorker.register('./sw.js')`.
 
@@ -146,7 +146,7 @@ None. The app has no configuration or secrets.
 - ✅ Round-trip conversions (encode/decode, JSON/YAML) should be tested.
 - ✅ Known limits (QR capacity, diff size) should be tested.
 
-**Current**: 62 tests covering ~90% of lib.js. Missing: UI integration tests (Playwright E2E).
+**Current**: 65 pure utility tests and jsdom interaction coverage for the shipped browser module, plus Playwright E2E coverage for the browser UI.
 
 **Running Tests**:
 
@@ -182,6 +182,7 @@ Requires:
 | **YAML parser** | Common subset only: no anchors, aliases, multi-line blocks | Simplicity; full YAML would require hundreds of lines |
 | **cURL parser** | No scheme-less URLs | Regex-based; complex edge case |
 | **QR encoder** | Byte mode only; no Kanji or ECI modes | Simplicity; covers 99% of use cases |
+| **QR reader** | Requires the browser's `BarcodeDetector` API | The tool never uploads a local image to a fallback service |
 | **Smart Paste** | Limited types detected | Only JWT, JSON, Base64, URL-encoded, hex, timestamp, UUID, hash, integer |
 
 ---

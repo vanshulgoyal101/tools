@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
 <title>Tools — paste anything, it finds the right dev tool</title>
-<meta name="description" content="Smart Paste: drop in a JWT, JSON, Base64, URL-encoded text, a colour, a timestamp or a UUID and it auto-detects and decodes it. Plus 19 dev utilities and a ⌘K command palette — all 100% in your browser, offline, nothing uploaded.">
+<meta name="description" content="Smart Paste: drop in a JWT, JSON, Base64, URL-encoded text, a colour, a timestamp or a UUID and it auto-detects and decodes it. Plus 23 dev utilities and a ⌘K command palette — all 100% in your browser, offline, nothing uploaded.">
 <meta name="keywords" content="developer tools, json formatter, base64 encode decode, jwt decoder, sha-256 hash, uuid generator, regex tester, cron expression, json to yaml, json to typescript, curl to fetch, hmac generator, qr code generator, unix timestamp converter, url encoder, offline dev tools">
 <meta name="author" content="Vanshul Goyal">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
@@ -14,7 +14,7 @@
 <link rel="canonical" href="https://tools.vanshul.com/">
 <meta property="og:site_name" content="Tools · vanshul.com">
 <meta property="og:title" content="Tools — paste anything, it finds the right dev tool">
-<meta property="og:description" content="Smart Paste auto-detects JWT, JSON, Base64, colours, timestamps & UUIDs — plus 19 offline dev utilities. 100% in your browser, nothing uploaded.">
+<meta property="og:description" content="Smart Paste auto-detects JWT, JSON, Base64, colours, timestamps & UUIDs — plus 23 offline dev utilities. 100% in your browser, nothing uploaded.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://tools.vanshul.com/">
 <meta property="og:image" content="https://tools.vanshul.com/og.png">
@@ -24,7 +24,7 @@
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Tools — paste anything, it finds the right dev tool">
-<meta name="twitter:description" content="Smart Paste + 19 offline developer utilities that run entirely in your browser. Nothing uploaded.">
+<meta name="twitter:description" content="Smart Paste + 23 offline developer utilities that run entirely in your browser. Nothing uploaded.">
 <meta name="twitter:image" content="https://tools.vanshul.com/og.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%B0%3C/text%3E%3C/svg%3E">
@@ -39,10 +39,11 @@
   "browserRequirements": "Requires JavaScript",
   "isAccessibleForFree": true,
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-  "description": "A private, offline-first collection of 19 everyday developer utilities plus a Smart Paste box that auto-detects JWTs, JSON, Base64, colours, timestamps and UUIDs. Everything runs entirely in the browser — nothing is uploaded.",
+  "description": "A private, offline-first collection of 23 everyday developer utilities plus a Smart Paste box that auto-detects JWTs, JSON, Base64, colours, timestamps and UUIDs. Everything runs entirely in the browser — nothing is uploaded.",
   "author": { "@type": "Person", "name": "Vanshul Goyal", "url": "https://vanshul.com" },
   "featureList": [
     "JSON formatter (pretty-print, minify, validate)",
+    "Number base converter",
     "Base64 encoder and decoder",
     "URL encoder and decoder",
     "JWT decoder",
@@ -57,10 +58,13 @@
     "Cron expression explainer",
     "JSON to YAML converter",
     "JSON to TypeScript, sort keys and path query",
+    "Markdown preview",
+    "Image to data URI converter",
     "cURL to fetch and Python converter",
     "Data transform (sort, dedupe, slugify, CSV to JSON)",
     "HMAC-SHA and CRC32 checksums",
-    "QR code generator"
+    "QR code generator",
+    "QR code reader"
   ]
 }
 </script>
@@ -112,6 +116,13 @@
   .tile .emoji{font-size:1.5rem}
   .tile h3{margin:8px 0 4px;font-size:1.02rem}
   .tile p{margin:0;color:var(--muted);font-size:.85rem}
+  .categories{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}
+  button.category{background:var(--panel);border:1px solid var(--line);border-radius:999px;color:var(--muted);cursor:pointer;font-size:.84rem;padding:7px 11px}
+  button.category:hover,button.category.active{border-color:var(--accent);color:var(--accent);background:var(--panel-2)}
+  .tool-count{color:var(--muted);font-size:.86rem;margin:0 0 10px}
+  .dropzone{border:1px dashed var(--muted);border-radius:10px;padding:20px;text-align:center;color:var(--muted);cursor:pointer;transition:border-color .15s,color .15s}
+  .dropzone:hover,.dropzone.drag{border-color:var(--accent);color:var(--accent)}
+  .image-preview{display:block;max-width:100%;max-height:260px;object-fit:contain;background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-top:10px}
   label.small{display:block;color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;margin:14px 0 6px}
   textarea,input[type=text],input[type=number],select{
     width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;color:var(--text);
@@ -167,10 +178,11 @@
 <footer class="site-info">
   <div class="wrap">
     <h2>Free, private, offline developer tools</h2>
-    <p><strong>tools.vanshul.com</strong> is a collection of 19 everyday developer utilities plus a Smart Paste box that auto-detects whatever you drop in. Every conversion runs entirely in your browser using plain JavaScript and the Web Crypto API — nothing is ever uploaded to a server, there are no accounts or ads, and the whole app works offline as an installable PWA.</p>
+    <p><strong>tools.vanshul.com</strong> is a collection of 23 everyday developer utilities plus a Smart Paste box that auto-detects whatever you drop in. Every conversion runs entirely in your browser using plain JavaScript and the Web Crypto API — nothing is ever uploaded to a server, there are no accounts or ads, and the whole app works offline as an installable PWA.</p>
     <h3>Every tool included</h3>
     <ul class="toollist">
       <li><b>JSON formatter</b> — pretty-print, minify &amp; validate JSON.</li>
+      <li><b>Base converter</b> — convert between binary, octal, decimal, hex &amp; base 36.</li>
       <li><b>Base64</b> — encode &amp; decode Base64 (UTF-8 safe).</li>
       <li><b>URL encode</b> — encode / decode URL components &amp; query strings.</li>
       <li><b>JWT decoder</b> — inspect a JSON Web Token's header, payload &amp; claims.</li>
@@ -185,10 +197,13 @@
       <li><b>Cron</b> — explain a cron expression &amp; preview the next runs.</li>
       <li><b>JSON ⇄ YAML</b> — convert between JSON and YAML.</li>
       <li><b>JSON tools</b> — JSON → TypeScript types, sort keys &amp; path query.</li>
+      <li><b>Markdown preview</b> — render Markdown into clean HTML in-browser.</li>
+      <li><b>Image → data URI</b> — turn a local image into a data URI or CSS background.</li>
       <li><b>cURL → code</b> — turn a curl command into fetch or Python requests.</li>
       <li><b>Transform</b> — sort / dedupe lines, slugify, case styles, CSV ⇄ JSON.</li>
       <li><b>HMAC &amp; CRC</b> — keyed HMAC-SHA and CRC32 checksums.</li>
       <li><b>QR code</b> — generate a scannable QR code, fully offline.</li>
+      <li><b>QR reader</b> — read a QR code from a local image, without uploading it.</li>
       <li><b>Smart Paste</b> — paste a JWT, JSON, Base64, colour, timestamp or UUID and it auto-detects &amp; decodes it.</li>
     </ul>
     <h3>Frequently asked questions</h3>
@@ -213,12 +228,13 @@ import {
   encU8, decU8, bytesToB64, b64ToBytes, jsonToYaml, yamlToJson, qrEncode,
   crc32, jsonToTs, jsonPathQuery, sortKeys,
   csvToJson, jsonToCsv, slugify, toCamel, toPascal, toSnake, toKebab, toConstant,
+  parseBaseNumber, formatBaseNumber, convertBaseNumber, numberBaseInfo, markdownToHtml,
   diffLines, parseColor, rgbToHsl, rgbToHex,
   describeCron, cronNextRuns, MODEL_PRICES, estimateTokens, parseTimestamp,
   parseCurl, curlToFetch, curlToPython,
   detectPasteTypes, uuidV4, uuidV7, ulid, nanoid, randomHex, password,
   parseQuery
-} from './lib.js';
+} from './lib.js?v=5';
 
 // ---------- helpers ----------
 const el = (tag, attrs={}, ...kids)=>{
@@ -241,8 +257,13 @@ let _fid = 0;
 function field(labelText, node){
   const wrap = el('div');
   if(node && !node.id && /^(INPUT|TEXTAREA|SELECT)$/.test(node.tagName)) node.id = 'f'+(++_fid);
-  const lbl = el('label',{class:'small'}, labelText);
+  const labelId = 'f-label-'+(++_fid);
+  const lbl = el('label',{class:'small',id:labelId}, labelText);
   if(node?.id) lbl.setAttribute('for', node.id);
+  else if(node){
+    node.setAttribute('role','region');
+    node.setAttribute('aria-labelledby',labelId);
+  }
   wrap.append(lbl, node);
   return wrap;
 }
@@ -253,6 +274,17 @@ function outputBox(){ return el('div',{class:'out'}); }
 // ---------- tools ----------
 const tools = [];
 const tool = (t)=>tools.push(t);
+const categories = {
+  Data: ['json','yaml','jsonts','transform','diff','markdown'],
+  Encoding: ['base','base64','url','jwt','qr','qr-reader'],
+  Security: ['hash','hmac','id'],
+  'Web & API': ['curl','regex','cron'],
+  'Text & Design': ['text','color'],
+  Files: ['datauri'],
+  AI: ['tokens'],
+  Time: ['time'],
+};
+const categoryFor = (id) => Object.entries(categories).find(([, ids]) => ids.includes(id))?.[0] || 'Other';
 
 // JSON
 tool({ id:'json', emoji:'{ }', name:'JSON formatter', blurb:'Pretty-print, minify & validate JSON.',
@@ -283,6 +315,112 @@ tool({ id:'json', emoji:'{ }', name:'JSON formatter', blurb:'Pretty-print, minif
   }});
 
 // Base64
+tool({ id:'base', emoji:'🔢', name:'Base converter', blurb:'Convert numbers between bases 2–36, including hex and binary.',
+  render(root){
+    const inp = el('input',{type:'text',value:'255',placeholder:'42 or 0x2A'});
+    const from = el('select',{},
+      el('option',{value:'2'},'Binary (2)'),
+      el('option',{value:'8'},'Octal (8)'),
+      el('option',{value:'10',selected:'selected'},'Decimal (10)'),
+      el('option',{value:'16'},'Hex (16)'),
+      el('option',{value:'36'},'Base 36'));
+    const to = el('select',{},
+      el('option',{value:'2'},'Binary (2)'),
+      el('option',{value:'8'},'Octal (8)'),
+      el('option',{value:'10',selected:'selected'},'Decimal (10)'),
+      el('option',{value:'16'},'Hex (16)'),
+      el('option',{value:'36'},'Base 36'));
+    const out = outputBox();
+    const info = el('div',{class:'kv'});
+    const render = ()=>{
+      out.classList.remove('err');
+      info.innerHTML='';
+      try {
+        const value = inp.value.trim();
+        if (!value) { out.textContent = ''; return; }
+        const n = parseBaseNumber(value, Number(from.value));
+        const converted = formatBaseNumber(n, Number(to.value));
+        const stats = numberBaseInfo(value, Number(from.value));
+        out.textContent = converted;
+        const add=(k,v)=>info.append(el('div',{class:'k'},k),el('div',{},String(v)));
+        add('Decimal', stats.decimal);
+        add('Binary', stats.binary);
+        add('Octal', stats.octal);
+        add('Hex', stats.hex);
+        add('Base36', stats.base36);
+      } catch (e) {
+        out.classList.add('err');
+        out.textContent = e.message;
+      }
+    };
+    [inp, from, to].forEach((elNode) => elNode.addEventListener('input', render));
+    from.addEventListener('change', render);
+    to.addEventListener('change', render);
+    root.append(
+      field('Value', inp),
+      el('div',{class:'two'}, field('From base', from), field('To base', to)),
+      el('div',{class:'btnrow'},
+        el('button',{class:'btn primary',onclick:render},'Convert'),
+        el('button',{class:'btn',onclick:(e)=>copy(out.textContent,e.target)},'Copy')),
+      field('Converted result', out),
+      field('Quick views', info),
+    );
+    render();
+  }
+});
+
+tool({ id:'markdown', emoji:'📝', name:'Markdown preview', blurb:'Render Markdown to clean HTML without leaving the browser.',
+  render(root){
+    const inp = el('textarea',{placeholder:'# Title\n\n**bold** and *italic*\n\n- list item\n- second item\n\n[link](https://example.com)'});
+    const out = el('div',{class:'out'});
+    const render = ()=>{
+      const html = markdownToHtml(inp.value);
+      out.innerHTML = html || '<p class="sub">Start typing Markdown to preview it here.</p>';
+    };
+    inp.addEventListener('input', render);
+    root.append(field('Markdown', inp), field('Preview', out));
+    render();
+  }
+});
+
+tool({ id:'datauri', emoji:'🖼️', name:'Image → data URI', blurb:'Turn an image file into a data URI or CSS background, locally.',
+  render(root){
+    const file = el('input',{type:'file',accept:'image/*',style:'display:none'});
+    const drop = el('div',{class:'dropzone',tabindex:'0',role:'button','aria-label':'Choose or drop an image file'},'Drop an image here or choose a file');
+    const preview = el('img',{class:'image-preview',alt:'Selected image preview',style:'display:none'});
+    const meta = el('div',{class:'kv'});
+    const out = outputBox();
+    const process = (selected)=>{
+      if(!selected) return;
+      if(!selected.type.startsWith('image/')) { out.classList.add('err'); out.textContent='Choose an image file.'; return; }
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        const uri = String(reader.result);
+        out.classList.remove('err'); out.textContent = uri;
+        preview.src=uri; preview.style.display='';
+        meta.innerHTML='';
+        const add=(k,v)=>meta.append(el('div',{class:'k'},k),el('div',{},v));
+        add('Name', selected.name || 'image');
+        add('Type', selected.type);
+        add('Size', (selected.size/1024).toFixed(selected.size < 1024*1024 ? 1 : 0)+(selected.size < 1024*1024?' KB':' MB'));
+      };
+      reader.onerror = ()=>{ out.classList.add('err'); out.textContent='Could not read this file.'; };
+      reader.readAsDataURL(selected);
+    };
+    drop.addEventListener('click',()=>file.click());
+    drop.addEventListener('keydown',(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();file.click();}});
+    file.addEventListener('change',()=>process(file.files?.[0]));
+    for(const eventName of ['dragenter','dragover']) drop.addEventListener(eventName,(e)=>{e.preventDefault();drop.classList.add('drag');});
+    for(const eventName of ['dragleave','drop']) drop.addEventListener(eventName,(e)=>{e.preventDefault();drop.classList.remove('drag');});
+    drop.addEventListener('drop',(e)=>process(e.dataTransfer?.files?.[0]));
+    root.append(file, drop, preview, field('Image details', meta),
+      el('div',{class:'btnrow'},
+        el('button',{class:'btn primary',onclick:(e)=>copy(out.textContent,e.target)},'Copy data URI'),
+        el('button',{class:'btn',onclick:(e)=>copy(out.textContent?`background-image: url("${out.textContent}");`:'',e.target)},'Copy CSS')),
+      field('Data URI', out));
+  }
+});
+
 tool({ id:'base64', emoji:'📦', name:'Base64', blurb:'Encode & decode Base64 (UTF-8 safe).',
   render(root){
     const inp = el('textarea',{placeholder:'Text or Base64…'});
@@ -713,6 +851,47 @@ tool({ id:'qr', emoji:'🔳', name:'QR code', blurb:'Generate a scannable QR cod
     run();
   }});
 
+tool({ id:'qr-reader', emoji:'📷', name:'QR reader', blurb:'Read a QR code from an image without uploading it.',
+  render(root){
+    const supported = 'BarcodeDetector' in window;
+    const file = el('input',{type:'file',accept:'image/*',style:'display:none'});
+    const picker = el('button',{class:'btn primary',type:'button',onclick:()=>file.click()},'Choose QR image');
+    const note = el('p',{class:'sub'});
+    const preview = el('img',{class:'image-preview',alt:'Selected QR image preview',style:'display:none'});
+    const out = outputBox();
+    const scan = async (selected)=>{
+      if(!selected || !selected.type.startsWith('image/')) { out.classList.add('err'); out.textContent='Choose an image file.'; return; }
+      const objectUrl = URL.createObjectURL(selected);
+      const image = new Image();
+      image.onload = async ()=>{
+        preview.src=objectUrl; preview.style.display='';
+        try {
+          const detector = new BarcodeDetector({formats:['qr_code']});
+          const codes = await detector.detect(image);
+          out.classList.remove('err');
+          out.textContent = codes.length ? codes.map((code)=>code.rawValue).join('\n') : 'No QR code found in this image.';
+        } catch(error) {
+          out.classList.add('err');
+          out.textContent = 'Could not scan this image: '+(error?.message || 'unknown error');
+        } finally {
+          URL.revokeObjectURL(objectUrl);
+        }
+      };
+      image.onerror = ()=>{ URL.revokeObjectURL(objectUrl); out.classList.add('err'); out.textContent='Could not load this image.'; };
+      image.src=objectUrl;
+    };
+    file.addEventListener('change',()=>scan(file.files?.[0]));
+    if(!supported){
+      picker.disabled=true;
+      note.classList.add('err');
+      note.textContent='QR reading needs the built-in BarcodeDetector API, which this browser does not provide. Try a current Chromium-based browser.';
+    } else note.textContent='Choose an image containing a QR code. It is scanned locally in your browser.';
+    root.append(file, el('div',{class:'btnrow'},picker), note, preview,
+      el('div',{class:'btnrow'},el('button',{class:'btn',onclick:(e)=>copy(out.textContent,e.target)},'Copy result')),
+      field('Scan result', out));
+  }
+});
+
 // ---------- routing / shell ----------
 const nav = document.getElementById('nav');
 const main = document.getElementById('main');
@@ -782,7 +961,7 @@ function buildPalette(){
   const close=()=>overlay.classList.remove('on');
   const render=()=>{
     const q=input.value.trim().toLowerCase();
-    items=tools.filter(t=>!q||(t.name+' '+t.blurb+' '+t.id).toLowerCase().includes(q));
+    items=tools.filter(t=>!q||(t.name+' '+t.blurb+' '+t.id+' '+categoryFor(t.id)).toLowerCase().includes(q));
     if(sel>=items.length) sel=Math.max(0,items.length-1);
     list.innerHTML='';
     items.forEach((t,i)=>list.append(el('div',{class:'it'+(i===sel?' sel':''),onclick:()=>{location.hash='#'+t.id;close();}},
@@ -815,12 +994,28 @@ function renderHome(){
     ta, results);
   main.append(smart);
   renderSmart(results,'');
+  const categoryRow = el('div',{class:'categories',role:'group','aria-label':'Filter tools by category'});
+  const toolCount = el('p',{class:'tool-count'});
   const grid = el('div',{class:'grid'});
-  for(const t of tools)
-    grid.append(el('a',{class:'tile',href:'#'+t.id},
-      el('div',{class:'emoji'},t.emoji), el('h3',{},t.name), el('p',{},t.blurb)));
+  let selected = 'All';
+  const renderGrid = ()=>{
+    grid.innerHTML='';
+    const filtered = selected === 'All' ? tools : tools.filter((t)=>categoryFor(t.id)===selected);
+    toolCount.textContent = `${filtered.length} tool${filtered.length===1?'':'s'}${selected==='All'?'':' in '+selected}`;
+    for(const t of filtered)
+      grid.append(el('a',{class:'tile',href:'#'+t.id},
+        el('div',{class:'emoji'},t.emoji), el('h3',{},t.name), el('p',{},t.blurb)));
+    for(const button of categoryRow.querySelectorAll('button')) button.classList.toggle('active',button.dataset.category===selected);
+  };
+  for(const category of ['All',...Object.keys(categories)]){
+    const button = el('button',{class:'category',type:'button','data-category':category,onclick:()=>{selected=category;renderGrid();}},category);
+    categoryRow.append(button);
+  }
+  renderGrid();
   main.append(
-    el('h2',{style:'margin:22px 2px 8px;font-size:.9rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em'},'All tools'),
+    el('h2',{style:'margin:22px 2px 8px;font-size:.9rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em'},'Browse tools'),
+    categoryRow,
+    toolCount,
     grid,
     el('p',{class:'privacy'},'🔒 No analytics that read your input, no server round-trips for any conversion. Built by ',
       el('a',{href:'https://vanshul.com'},'Vanshul'), '. ',
@@ -839,6 +1034,26 @@ const toolSEO = {
     title: 'Base64 Encoder & Decoder — UTF-8 Safe Online Tool',
     description: 'Encode text to Base64 or decode Base64 to text. UTF-8 safe for emojis, accents, and international characters. Instant conversion, no server.',
     keywords: 'base64 encode, base64 decode, utf8, encoding, base64 online'
+  },
+  base: {
+    title: 'Number Base Converter — Convert Binary, Octal, Decimal & Hex Online',
+    description: 'Convert values across binary, octal, decimal, hex, and base-36 formats. Handles signed values and quick equivalence views instantly.',
+    keywords: 'base converter, binary to decimal, hex converter, octal converter, base36, number converter'
+  },
+  markdown: {
+    title: 'Markdown Preview — Render Markdown to HTML Instantly',
+    description: 'Preview Markdown with headings, emphasis, links, and lists directly in your browser. Great for quick notes or README snippets.',
+    keywords: 'markdown preview, markdown to html, markdown renderer, markdown viewer'
+  },
+  datauri: {
+    title: 'Image to Data URI Converter — Create CSS Backgrounds Locally',
+    description: 'Turn an image file into a data URI, inspect its type and size, preview it, or copy a CSS background declaration. Nothing is uploaded.',
+    keywords: 'image to data uri, image to base64, data url, css background image, image encoder'
+  },
+  'qr-reader': {
+    title: 'QR Code Reader — Scan QR Images Locally in Your Browser',
+    description: 'Read QR codes from local image files with your browser built-in barcode detector. No image upload, accounts, or server processing.',
+    keywords: 'qr code reader, qr scanner image, scan qr code from image, barcode detector, offline qr scanner'
   },
   url: { 
     title: 'URL Encoder & Decoder — Encode & Parse Query Strings Online',
@@ -931,7 +1146,7 @@ function updateSEOTags(toolId){
   const seo = toolSEO[toolId] || {};
   const title = seo.title || 'Tools — paste anything, it finds the right dev tool';
   const keywords = seo.keywords || 'developer tools, json formatter, base64 encode decode';
-  const description = seo.description || 'Private, offline developer toolbox with 19 utilities. 100% in your browser, nothing uploaded.';
+  const description = seo.description || 'Private, offline developer toolbox with 23 utilities. 100% in your browser, nothing uploaded.';
   
   // Update title and meta tags
   document.title = title;
@@ -976,8 +1191,8 @@ function updateSEOTags(toolId){
 function route(){
   const id = location.hash.slice(1);
   updateSEOTags(id);
-  for(const a of nav.querySelectorAll('a')) a.classList.toggle('active', a.getAttribute('href')==='#'+id || (!id && a.dataset.home==='1'));
   const t = tools.find(x=>x.id===id);
+  for(const a of nav.querySelectorAll('a')) a.classList.toggle('active', t ? a.getAttribute('href')==='#'+id : a.dataset.home==='1');
   if(!t){ renderHome(); return; }
   if(window.vtrack) window.vtrack(t.id);
   main.innerHTML='';
