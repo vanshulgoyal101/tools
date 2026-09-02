@@ -205,6 +205,31 @@ test.describe('Tools E2E smoke', () => {
     }
   });
 
+  test('Escape tool: escapes HTML entities', async ({ page }) => {
+    await gotoTool(page, 'escape');
+    await page.getByLabel('Input').fill('<b>Tom & Jerry</b>');
+    await page.getByRole('button', { name: 'HTML escape' }).click();
+    await expect(page.getByLabel('Output')).toHaveText('&lt;b&gt;Tom &amp; Jerry&lt;/b&gt;');
+  });
+
+  test('Regex tester: warns about catastrophic backtracking', async ({ page }) => {
+    await gotoTool(page, 'regex');
+    await page.getByLabel('Pattern').fill('(a+)+$');
+    await expect(page.locator('.warn')).toBeVisible();
+    await expect(page.locator('.warn')).toContainText('backtrack');
+  });
+
+  test('Theme: toggles and survives a reload', async ({ page }) => {
+    await page.goto('/');
+    const root = page.locator('html');
+    const before = await root.getAttribute('data-theme');
+    await page.getByRole('button', { name: /Switch to (dark|light) theme/ }).click();
+    const after = await root.getAttribute('data-theme');
+    expect(after).not.toBe(before);
+    await page.reload();
+    await expect(root).toHaveAttribute('data-theme', after);
+  });
+
   test('Smart Paste: detects JSON on home', async ({ page }) => {
     await page.goto('/');
     await page.locator('.smart textarea').fill('{"id":1}');

@@ -6,7 +6,7 @@ import * as lib from '../lib.js';
 const indexPath = new URL('../index.html', import.meta.url);
 const html = await readFile(indexPath, 'utf8');
 const appSource = html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1]
-  .replace(/^import[\s\S]*?from '\.\/lib\.js\?v=5';\n/m, '');
+  .replace(/^import[\s\S]*?from '\.\/lib\.js[^']*';\n/m, '');
 
 if (!appSource) throw new Error('Could not locate the application module in index.html');
 
@@ -80,7 +80,7 @@ describe('shipped app DOM interactions', () => {
       .map((link) => ({ id: link.getAttribute('href').slice(1), name: link.textContent.trim() }))
       .filter(({ id }) => id);
 
-    expect(routes).toHaveLength(23);
+    expect(routes).toHaveLength(24);
     expect(routes.map(({ id }) => id)).toEqual(expect.arrayContaining(['hash', 'hmac', 'qr-reader']));
     for(const { id, name } of routes.filter(({ id }) => !['hash', 'hmac'].includes(id))){
       window.location.hash = id;
@@ -94,7 +94,7 @@ describe('shipped app DOM interactions', () => {
     const { document } = window;
 
     expect(document.querySelector('h1')?.textContent).toBe('Paste anything. It finds the tool.');
-    expect(document.querySelector('.tool-count')?.textContent).toBe('23 tools');
+    expect(document.querySelector('.tool-count')?.textContent).toBe('24 tools');
     document.querySelector('button[data-category="Security"]')?.click();
 
     expect(document.querySelector('.tool-count')?.textContent).toBe('3 tools in Security');
@@ -227,6 +227,76 @@ describe('shipped app DOM interactions', () => {
     expect(document.querySelector('[role="status"]')?.textContent).toBe('https://tools.vanshul.com');
     expect(document.querySelector('.image-preview')?.getAttribute('src')).toBe('blob:local-qr');
     expect(revokedUrl).toBe('blob:local-qr');
+  });
+
+  it('escapes and unescapes HTML through the Escape tool buttons', () => {
+    const window = boot('#escape');
+    const { document } = window;
+    const source = document.querySelector('textarea');
+    const output = document.querySelector('[role="status"]');
+    source.value = '<b>Tom & Jerry</b>';
+    document.querySelector('button.primary').click();
+    expect(output.textContent).toBe('&lt;b&gt;Tom &amp; Jerry&lt;/b&gt;');
+
+    source.value = '&lt;i&gt;x&lt;/i&gt;';
+    [...document.querySelectorAll('button')].find((b) => b.textContent === 'HTML unescape').click();
+    expect(output.textContent).toBe('<i>x</i>');
+  });
+
+  it('surfaces an unescape failure as an error instead of throwing', () => {
+    const window = boot('#escape');
+    const { document } = window;
+    document.querySelector('textarea').value = 'bad \\q';
+    [...document.querySelectorAll('button')].find((b) => b.textContent === 'JS unescape').click();
+
+    const output = document.querySelector('[role="status"]');
+    expect(output.classList.contains('err')).toBe(true);
+    expect(output.textContent).toMatch(/valid escaped string/i);
+  });
+
+  it('warns about catastrophic regex patterns but still reports matches', () => {
+    const window = boot('#regex');
+    const { document } = window;
+    const [pattern] = document.querySelectorAll('input[type="text"]');
+    const warning = document.querySelector('.warn');
+
+    input(window, pattern, '\\d+');
+    expect(warning.style.display).toBe('none');
+
+    input(window, document.querySelector('textarea'), 'a1 b22');
+    input(window, pattern, '(a+)+$');
+    expect(warning.style.display).toBe('');
+    expect(warning.textContent).toMatch(/backtrack/i);
+    expect(document.querySelector('.kv').textContent).toContain('Matches');
+  });
+
+  it('toggles the colour theme and remembers the choice', () => {
+    const window = boot();
+    const { document } = window;
+    const toggle = document.getElementById('theme-toggle');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+
+    toggle.click();
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    expect(window.localStorage.getItem('tools-theme')).toBe('light');
+    expect(toggle.getAttribute('aria-label')).toBe('Switch to dark theme');
+    expect(document.querySelector('meta[name="theme-color"]').content).toBe('#f5f7fc');
+
+    toggle.click();
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+  });
+
+  it('lists recently used tools on the home screen', () => {
+    const window = boot('#markdown');
+    const { document } = window;
+    expect(window.localStorage.getItem('tools-recent')).toContain('markdown');
+
+    window.location.hash = '';
+    window.dispatchEvent(new window.HashChangeEvent('hashchange'));
+
+    const labels = [...document.querySelectorAll('.section-label')].map((h) => h.textContent);
+    expect(labels).toContain('Recently used');
+    expect(document.querySelector('a.category[href="#markdown"]')).not.toBeNull();
   });
 
   it('falls back to the home screen for an unknown route', () => {

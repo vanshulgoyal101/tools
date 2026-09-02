@@ -10,6 +10,8 @@ import {
   splitWords, slugify, toCamel, toPascal, toSnake, toKebab, toConstant, titleCase,
   parseBaseNumber, formatBaseNumber, convertBaseNumber, numberBaseInfo,
   markdownToHtml,
+  escapeHtml, unescapeHtml, escapeRegex, escapeJsString, unescapeJsString,
+  analyzeRegexRisk, regexScan, REGEX_MATCH_LIMIT,
   diffLines, DIFF_LIMIT,
   parseColor, rgbToHsl, rgbToHex, hslToRgb,
   parseCronField, describeCron, cronNextRuns,
@@ -227,6 +229,73 @@ describe('markdown preview', () => {
     expect(html).toContain('<em>italic</em>');
     expect(html).toContain('<ul>');
     expect(html).toContain('<a href="https://example.com"');
+  });
+});
+
+describe('escaping helpers', () => {
+  it('round-trips HTML entities', () => {
+    expect(escapeHtml('<a href="x">A & B\'s</a>')).toBe('&lt;a href=&quot;x&quot;&gt;A &amp; B&#39;s&lt;/a&gt;');
+    expect(unescapeHtml('&lt;b&gt;hi&lt;/b&gt; &amp; &quot;quotes&quot;')).toBe('<b>hi</b> & "quotes"');
+  });
+  it('decodes numeric and hex character references', () => {
+    expect(unescapeHtml('&#39;&#x2764;')).toBe("'\u2764");
+    expect(unescapeHtml('&notareal;')).toBe('&notareal;');
+  });
+  it('escapes regex metacharacters so the literal matches itself', () => {
+    const literal = 'a.b*c(d)';
+    expect(new RegExp(escapeRegex(literal)).test(literal)).toBe(true);
+    expect(escapeRegex('1+1')).toBe('1\\+1');
+  });
+  it('round-trips JS string escapes', () => {
+    expect(escapeJsString('line\n"quoted"\ttab')).toBe('line\\n\\"quoted\\"\\ttab');
+    expect(unescapeJsString('line\\n\\ttab')).toBe('line\n\ttab');
+    expect(unescapeJsString(escapeJsString('emoji 🚀 "x"'))).toBe('emoji 🚀 "x"');
+  });
+  it('rejects malformed escape sequences', () => {
+    expect(() => unescapeJsString('bad \\q')).toThrow(/valid escaped string/i);
+  });
+});
+
+describe('regex safety', () => {
+  it('flags nested unbounded quantifiers', () => {
+    expect(analyzeRegexRisk('(a+)+$').risky).toBe(true);
+    expect(analyzeRegexRisk('(\\d*)*').risky).toBe(true);
+    expect(analyzeRegexRisk('(ab{2,})+').risky).toBe(true);
+  });
+  it('does not flag ordinary patterns', () => {
+    for (const safe of ['\\d+', '(ab)+', '(a|b)*', '^\\w+@\\w+\\.\\w+$', '[a+*]+', '(a+)b*']) {
+      expect(analyzeRegexRisk(safe).risky).toBe(false);
+    }
+  });
+  it('collects matches with groups and indices', () => {
+    const { matches, truncated, timedOut } = regexScan('(\\w)(\\d)', 'g', 'a1 b2');
+    expect(matches).toHaveLength(2);
+    expect(matches[0]).toMatchObject({ index: 0, value: 'a1', groups: ['a', '1'] });
+    expect(truncated).toBe(false);
+    expect(timedOut).toBe(false);
+  });
+  it('captures named groups', () => {
+    const { matches } = regexScan('(?<letter>[a-z])', 'g', 'xy');
+    expect(matches[0].named).toEqual({ letter: 'x' });
+  });
+  it('advances past zero-length matches instead of looping forever', () => {
+    const { matches } = regexScan('a*', 'g', 'bbb');
+    expect(matches.length).toBeLessThanOrEqual(REGEX_MATCH_LIMIT);
+    expect(matches.every((m) => m.value === '')).toBe(true);
+  });
+  it('truncates at the match limit', () => {
+    const { matches, truncated } = regexScan('.', 'g', 'x'.repeat(50), { limit: 10 });
+    expect(matches).toHaveLength(10);
+    expect(truncated).toBe(true);
+  });
+  it('stops when the time budget is exceeded', () => {
+    let clock = 0;
+    const { timedOut, matches } = regexScan('.', 'g', 'x'.repeat(5000), {
+      timeBudgetMs: 5,
+      now: () => (clock += 1),
+    });
+    expect(timedOut).toBe(true);
+    expect(matches.length).toBeLessThan(5000);
   });
 });
 

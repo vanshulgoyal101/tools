@@ -178,7 +178,7 @@ Requires:
 
 | Tool | Limitation | Reason |
 |---|---|---|
-| **Regex tester** | Can hang on ReDoS patterns | No timeout or Web Worker in this version |
+| **Regex tester** | Pathological patterns yield partial results | Bounded by a match cap and wall-clock budget, plus a nested-quantifier warning; not full isolation |
 | **YAML parser** | Common subset only: no anchors, aliases, multi-line blocks | Simplicity; full YAML would require hundreds of lines |
 | **cURL parser** | No scheme-less URLs | Regex-based; complex edge case |
 | **QR encoder** | Byte mode only; no Kanji or ECI modes | Simplicity; covers 99% of use cases |
@@ -231,17 +231,17 @@ Requires:
 
 **Planned**:
 
-- [ ] Playwright E2E tests for all tool workflows.
-- [ ] Per-tool JSON-LD schema for SEO.
+- [x] Playwright E2E tests for all tool workflows.
+- [x] Per-tool JSON-LD schema for SEO.
+- [x] Number-base converter (radix 2–36).
+- [x] QR code reader (if BarcodeDetector API available; fallback to note).
 - [ ] Comprehensive WCAG 2.1 audit + fixes.
 - [ ] Base32 encoder/decoder (RFC 4648).
-- [ ] Number-base converter (radix 2–36).
-- [ ] QR code reader (if BarcodeDetector API available; fallback to note).
 
 **Out of Scope** (for simplicity):
 
 - Full YAML support (anchors, aliases, block scalars).
-- Regex timeout / Web Worker (would add complexity).
+- Regex execution in a Web Worker (the bounded scan in `regexScan` covers the practical cases).
 - Account / cloud sync (loses privacy benefit).
 - Mobile app (PWA is sufficient).
 

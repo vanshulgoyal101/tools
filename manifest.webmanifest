@@ -4,6 +4,14 @@
   "description": "Everyday developer utilities that run entirely in your browser.",
   "start_url": ".",
   "display": "standalone",
+  "lang": "en",
+  "categories": ["developer", "utilities", "productivity"],
+  "shortcuts": [
+    { "name": "Smart Paste", "short_name": "Paste", "url": ".", "description": "Paste anything and let it detect the type" },
+    { "name": "JSON formatter", "short_name": "JSON", "url": "./#json", "description": "Pretty-print, minify and validate JSON" },
+    { "name": "Base64", "short_name": "Base64", "url": "./#base64", "description": "Encode and decode Base64" },
+    { "name": "JWT decoder", "short_name": "JWT", "url": "./#jwt", "description": "Inspect a JSON Web Token" }
+  ],
   "background_color": "#0c0d12",
   "theme_color": "#0c0d12",
   "icons": [

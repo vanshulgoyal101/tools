@@ -414,6 +414,106 @@ export function markdownToHtml(input) {
   return out.join('');
 }
 
+/* ------------------------------------------------------------------ *
+ * Escaping helpers
+ * ------------------------------------------------------------------ */
+const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const HTML_UNESCAPES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0' };
+
+export const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
+
+export function unescapeHtml(s) {
+  return String(s ?? '').replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (full, body) => {
+    if (body[0] === '#') {
+      const code = body[1] === 'x' || body[1] === 'X'
+        ? parseInt(body.slice(2), 16)
+        : parseInt(body.slice(1), 10);
+      return Number.isFinite(code) && code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : full;
+    }
+    const named = HTML_UNESCAPES[body.toLowerCase()];
+    return named === undefined ? full : named;
+  });
+}
+
+// Escape a literal so it can be embedded in a regular expression.
+export const escapeRegex = (s) => String(s ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Escape/unescape the contents of a JS/JSON double-quoted string literal.
+export const escapeJsString = (s) => JSON.stringify(String(s ?? '')).slice(1, -1);
+
+export function unescapeJsString(s) {
+  const body = String(s ?? '').replace(/\\?"/g, '\\"');
+  try {
+    return JSON.parse(`"${body}"`);
+  } catch {
+    throw new Error('Not a valid escaped string');
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Regex safety
+ * ------------------------------------------------------------------ */
+// Heuristic guard for catastrophic backtracking: flags a group that both
+// contains an unbounded quantifier and is itself unboundedly quantified,
+// e.g. (a+)+ or (\d*)*. A warning, not a proof of safety.
+export function analyzeRegexRisk(pattern) {
+  const src = String(pattern ?? '');
+  const unboundedAt = (i) => {
+    const c = src[i];
+    if (c === '+' || c === '*') return true;
+    if (c === '{') {
+      const close = src.indexOf('}', i);
+      return close > i && /^\{\d+,\}$/.test(src.slice(i, close + 1));
+    }
+    return false;
+  };
+  const stack = [];
+  let escaped = false, inClass = false;
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (escaped) { escaped = false; continue; }
+    if (c === '\\') { escaped = true; continue; }
+    if (inClass) { if (c === ']') inClass = false; continue; }
+    if (c === '[') { inClass = true; continue; }
+    if (c === '(') { stack.push(false); continue; }
+    if (c === ')') {
+      const innerQuantified = stack.pop();
+      if (innerQuantified && unboundedAt(i + 1)) {
+        return { risky: true, reason: 'Nested unbounded quantifiers (e.g. (a+)+) can backtrack catastrophically.' };
+      }
+      continue;
+    }
+    if (unboundedAt(i) && stack.length) stack[stack.length - 1] = true;
+  }
+  return { risky: false, reason: '' };
+}
+
+export const REGEX_MATCH_LIMIT = 10_000;
+
+// Bounded global scan: stops at a match cap or a wall-clock budget so a
+// pathological pattern degrades into a partial result instead of a hang.
+export function regexScan(pattern, flags, text, options = {}) {
+  const { limit = REGEX_MATCH_LIMIT, timeBudgetMs = 250, now = Date.now } = options;
+  const source = String(text ?? '');
+  const f = String(flags ?? '');
+  const re = new RegExp(pattern, f.includes('g') ? f : f + 'g');
+  const matches = [];
+  const started = now();
+  let truncated = false, timedOut = false, m;
+  while ((m = re.exec(source)) !== null) {
+    matches.push({
+      index: m.index,
+      value: m[0],
+      groups: m.slice(1),
+      named: m.groups ? { ...m.groups } : null,
+    });
+    if (m[0] === '') re.lastIndex++;
+    if (matches.length >= limit) { truncated = true; break; }
+    if (matches.length % 64 === 0 && now() - started > timeBudgetMs) { timedOut = true; break; }
+  }
+  return { matches, truncated, timedOut };
+}
+
 // Line diff via LCS. Returns [{ t: ' '|'-'|'+', line }]. Throws if too large.
 export const DIFF_LIMIT = 4_000_000;
 export function diffLines(aText, bText) {

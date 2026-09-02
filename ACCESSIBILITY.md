@@ -76,7 +76,7 @@ This document describes:
 |---|---|---|---|
 | **Aria-label on icon buttons missing** | Low | "Generate" button next to hex input ambiguous | Add aria-label="Generate IDs" |
 | **Query param table not marked** | Low | Screen reader may not identify as table | Use semantic `<table>` or add `role="table"` |
-| **Mobile focus styles** | Low | Touch users don't see focus indicator | Add visible focus on `:focus-visible` for keyboard |
+| **Mobile focus styles** | Resolved | `:focus-visible` outlines are applied globally | Covered by the shipped stylesheet |
 
 ---
 
@@ -87,7 +87,7 @@ This document describes:
 - [ ] Add `aria-label` to icon-only buttons (e.g., "Generate IDs", "Copy output")
 - [x] Announce result and error updates with polite live-status regions
 - [x] Add a shared `aria-live="polite"` copy-feedback announcer
-- [ ] Add CSS for `button:focus-visible` with clear outline
+- [x] Add CSS for `button:focus-visible` with clear outline
 
 ### Phase 2: Focus Management (1–2 hours)
 

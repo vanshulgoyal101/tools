@@ -3,9 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="dark light">
+<script>
+  // Runs before first paint so a stored theme never flashes the wrong colours.
+  try{
+    var savedTheme = localStorage.getItem('tools-theme');
+    var prefersLight = typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: light)').matches;
+    document.documentElement.setAttribute('data-theme', savedTheme || (prefersLight ? 'light' : 'dark'));
+  }catch(e){}
+</script>
 <title>Tools — paste anything, it finds the right dev tool</title>
-<meta name="description" content="Smart Paste: drop in a JWT, JSON, Base64, URL-encoded text, a colour, a timestamp or a UUID and it auto-detects and decodes it. Plus 23 dev utilities and a ⌘K command palette — all 100% in your browser, offline, nothing uploaded.">
+<meta name="description" content="Smart Paste: drop in a JWT, JSON, Base64, URL-encoded text, a colour, a timestamp or a UUID and it auto-detects and decodes it. Plus 24 dev utilities and a ⌘K command palette — all 100% in your browser, offline, nothing uploaded.">
 <meta name="keywords" content="developer tools, json formatter, base64 encode decode, jwt decoder, sha-256 hash, uuid generator, regex tester, cron expression, json to yaml, json to typescript, curl to fetch, hmac generator, qr code generator, unix timestamp converter, url encoder, offline dev tools">
 <meta name="author" content="Vanshul Goyal">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
@@ -24,7 +32,7 @@
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Tools — paste anything, it finds the right dev tool">
-<meta name="twitter:description" content="Smart Paste + 23 offline developer utilities that run entirely in your browser. Nothing uploaded.">
+<meta name="twitter:description" content="Smart Paste + 24 offline developer utilities that run entirely in your browser. Nothing uploaded.">
 <meta name="twitter:image" content="https://tools.vanshul.com/og.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%B0%3C/text%3E%3C/svg%3E">
@@ -39,7 +47,7 @@
   "browserRequirements": "Requires JavaScript",
   "isAccessibleForFree": true,
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-  "description": "A private, offline-first collection of 23 everyday developer utilities plus a Smart Paste box that auto-detects JWTs, JSON, Base64, colours, timestamps and UUIDs. Everything runs entirely in the browser — nothing is uploaded.",
+  "description": "A private, offline-first collection of 24 everyday developer utilities plus a Smart Paste box that auto-detects JWTs, JSON, Base64, colours, timestamps and UUIDs. Everything runs entirely in the browser — nothing is uploaded.",
   "author": { "@type": "Person", "name": "Vanshul Goyal", "url": "https://vanshul.com" },
   "featureList": [
     "JSON formatter (pretty-print, minify, validate)",
@@ -64,7 +72,8 @@
     "Data transform (sort, dedupe, slugify, CSV to JSON)",
     "HMAC-SHA and CRC32 checksums",
     "QR code generator",
-    "QR code reader"
+    "QR code reader",
+    "HTML, JS string and regex escaping"
   ]
 }
 </script>
@@ -90,23 +99,33 @@
   :root{
     --bg:#0c0d12; --panel:#14161d; --panel-2:#191c25; --line:#262a36;
     --text:#f2f4f9; --muted:#949cb0; --accent:#7c9cff; --good:#34d399; --bad:#fb7185;
+    --warn:#f5a524; --bg-glow:#15181f; --on-accent:#0c0d12;
     --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  :root[data-theme="light"]{
+    --bg:#f5f7fc; --panel:#ffffff; --panel-2:#eef1f8; --line:#d5dbe8;
+    --text:#101319; --muted:#57607a; --accent:#3b5bdb; --good:#0f7f52; --bad:#c62b45;
+    --warn:#a2650a; --bg-glow:#e6ecfb; --on-accent:#ffffff;
   }
   *{box-sizing:border-box}
   html{overflow-x:hidden}
   body{
-    margin:0;background:radial-gradient(1200px 600px at 80% -10%,#15181f,var(--bg));
+    margin:0;background:radial-gradient(1200px 600px at 80% -10%,var(--bg-glow),var(--bg));
     color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
     min-height:100vh;-webkit-text-size-adjust:100%;
   }
   a{color:var(--accent)}
-  .skip-link{position:absolute;top:8px;left:8px;z-index:100;background:var(--accent);color:var(--bg);padding:8px 12px;border-radius:8px;font-weight:600;transform:translateY(-150%)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+  .warn,.sub.warn{color:var(--warn)}
+  .skip-link{position:absolute;top:8px;left:8px;z-index:100;background:var(--accent);color:var(--on-accent);padding:8px 12px;border-radius:8px;font-weight:600;transform:translateY(-150%)}
   .skip-link:focus{transform:translateY(0)}
   .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
   .layout{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
   aside{border-right:1px solid var(--line);padding:20px 14px;position:sticky;top:0;height:100vh;overflow:auto}
   .brand{font-weight:700;font-size:1.25rem;letter-spacing:-.02em;padding:6px 10px 12px;display:flex;align-items:center;gap:8px}
   .brand small{display:block;color:var(--muted);font-weight:400;font-size:.72rem;letter-spacing:.02em}
+  .theme-toggle{margin-left:auto;background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:5px 9px;font-size:.95rem;cursor:pointer;line-height:1}
+  .theme-toggle:hover{border-color:var(--accent)}
   nav a{display:block;padding:9px 12px;border-radius:9px;color:var(--text);text-decoration:none;font-size:.92rem}
   nav a:hover{background:var(--panel)}
   nav a.active{background:var(--panel-2);color:var(--accent);font-weight:600}
@@ -120,8 +139,9 @@
   .tile h3{margin:8px 0 4px;font-size:1.02rem}
   .tile p{margin:0;color:var(--muted);font-size:.85rem}
   .categories{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}
-  button.category{background:var(--panel);border:1px solid var(--line);border-radius:999px;color:var(--muted);cursor:pointer;font-size:.84rem;padding:7px 11px}
-  button.category:hover,button.category.active{border-color:var(--accent);color:var(--accent);background:var(--panel-2)}
+  .category{background:var(--panel);border:1px solid var(--line);border-radius:999px;color:var(--muted);cursor:pointer;font-size:.84rem;padding:7px 11px;text-decoration:none;display:inline-block}
+  .category:hover,.category.active{border-color:var(--accent);color:var(--accent);background:var(--panel-2)}
+  .section-label{margin:22px 2px 8px;font-size:.9rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
   .tool-count{color:var(--muted);font-size:.86rem;margin:0 0 10px}
   .dropzone{border:1px dashed var(--muted);border-radius:10px;padding:20px;text-align:center;color:var(--muted);cursor:pointer;transition:border-color .15s,color .15s}
   .dropzone:hover,.dropzone.drag{border-color:var(--accent);color:var(--accent)}
@@ -136,7 +156,7 @@
   .btnrow{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
   button.btn{background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:9px 15px;font-size:.9rem;cursor:pointer}
   button.btn:hover{border-color:var(--accent);color:var(--accent)}
-  button.btn.primary{background:var(--accent);border-color:var(--accent);color:#0c0d12;font-weight:600}
+  button.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
   .out{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;font-family:var(--mono);font-size:.9rem;white-space:pre-wrap;word-break:break-word;min-height:44px}
   .out.err{color:var(--bad)}
   .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-family:var(--mono);font-size:.9rem}
@@ -173,7 +193,9 @@
 <a class="skip-link" href="#main">Skip to main content</a>
 <div class="layout">
   <aside>
-    <div class="brand">🧰 <span>Tools<small>runs in your browser</small></span></div>
+    <div class="brand">🧰 <span>Tools<small>runs in your browser</small></span>
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch colour theme">🌙</button>
+    </div>
     <nav id="nav"></nav>
   </aside>
   <main id="main"></main>
@@ -183,7 +205,7 @@
 <footer class="site-info">
   <div class="wrap">
     <h2>Free, private, offline developer tools</h2>
-    <p><strong>tools.vanshul.com</strong> is a collection of 23 everyday developer utilities plus a Smart Paste box that auto-detects whatever you drop in. Every conversion runs entirely in your browser using plain JavaScript and the Web Crypto API — nothing is ever uploaded to a server, there are no accounts or ads, and the whole app works offline as an installable PWA.</p>
+    <p><strong>tools.vanshul.com</strong> is a collection of 24 everyday developer utilities plus a Smart Paste box that auto-detects whatever you drop in. Every conversion runs entirely in your browser using plain JavaScript and the Web Crypto API — nothing is ever uploaded to a server, there are no accounts or ads, and the whole app works offline as an installable PWA.</p>
     <h3>Every tool included</h3>
     <ul class="toollist">
       <li><b>JSON formatter</b> — pretty-print, minify &amp; validate JSON.</li>
@@ -209,6 +231,7 @@
       <li><b>HMAC &amp; CRC</b> — keyed HMAC-SHA and CRC32 checksums.</li>
       <li><b>QR code</b> — generate a scannable QR code, fully offline.</li>
       <li><b>QR reader</b> — read a QR code from a local image, without uploading it.</li>
+      <li><b>Escape</b> — escape &amp; unescape HTML entities, JS strings and regex literals.</li>
       <li><b>Smart Paste</b> — paste a JWT, JSON, Base64, colour, timestamp or UUID and it auto-detects &amp; decodes it.</li>
     </ul>
     <h3>Frequently asked questions</h3>
@@ -233,13 +256,15 @@ import {
   encU8, decU8, bytesToB64, b64ToBytes, jsonToYaml, yamlToJson, qrEncode,
   crc32, jsonToTs, jsonPathQuery, sortKeys,
   csvToJson, jsonToCsv, slugify, toCamel, toPascal, toSnake, toKebab, toConstant,
-  parseBaseNumber, formatBaseNumber, convertBaseNumber, numberBaseInfo, markdownToHtml,
+  parseBaseNumber, formatBaseNumber, numberBaseInfo, markdownToHtml,
+  escapeHtml, unescapeHtml, escapeRegex, escapeJsString, unescapeJsString,
+  analyzeRegexRisk, regexScan,
   diffLines, parseColor, rgbToHsl, rgbToHex,
   describeCron, cronNextRuns, MODEL_PRICES, estimateTokens, parseTimestamp,
   parseCurl, curlToFetch, curlToPython,
   detectPasteTypes, uuidV4, uuidV7, ulid, nanoid, randomHex, password,
   parseQuery
-} from './lib.js?v=5';
+} from './lib.js?v=6';
 
 // ---------- helpers ----------
 const el = (tag, attrs={}, ...kids)=>{
@@ -287,7 +312,7 @@ const tools = [];
 const tool = (t)=>tools.push(t);
 const categories = {
   Data: ['json','yaml','jsonts','transform','diff','markdown'],
-  Encoding: ['base','base64','url','jwt','qr','qr-reader'],
+  Encoding: ['base','base64','url','jwt','qr','qr-reader','escape'],
   Security: ['hash','hmac','id'],
   'Web & API': ['curl','regex','cron'],
   'Text & Design': ['text','color'],
@@ -442,6 +467,24 @@ tool({ id:'base64', emoji:'📦', name:'Base64', blurb:'Encode & decode Base64 (
       el('div',{class:'btnrow'},
         el('button',{class:'btn primary',onclick:enc},'Encode →'),
         el('button',{class:'btn',onclick:dec},'← Decode'),
+        el('button',{class:'btn',onclick:(e)=>copy(out.textContent,e.target)},'Copy')),
+      field('Output', out));
+  }});
+
+// Escape / unescape
+tool({ id:'escape', emoji:'🛡️', name:'Escape', blurb:'Escape & unescape HTML entities, JS strings and regex literals.',
+  render(root){
+    const inp = el('textarea',{placeholder:'<div class="x">Tom & Jerry</div>'});
+    const out = outputBox();
+    const apply=(fn)=>()=>{ try{ out.classList.remove('err'); out.textContent = fn(inp.value); }
+      catch(e){ out.classList.add('err'); out.textContent = e.message; } };
+    root.append(field('Input', inp),
+      el('div',{class:'btnrow'},
+        el('button',{class:'btn primary',onclick:apply(escapeHtml)},'HTML escape'),
+        el('button',{class:'btn',onclick:apply(unescapeHtml)},'HTML unescape'),
+        el('button',{class:'btn',onclick:apply(escapeJsString)},'JS escape'),
+        el('button',{class:'btn',onclick:apply(unescapeJsString)},'JS unescape'),
+        el('button',{class:'btn',onclick:apply(escapeRegex)},'Regex escape'),
         el('button',{class:'btn',onclick:(e)=>copy(out.textContent,e.target)},'Copy')),
       field('Output', out));
   }});
@@ -652,32 +695,41 @@ tool({ id:'regex', emoji:'🔎', name:'Regex tester', blurb:'Live matches, group
     const flags = el('input',{type:'text',value:'g',placeholder:'gimsuy'});
     const test = el('textarea',{placeholder:'Test string…'});
     const rep = el('input',{type:'text',placeholder:'Replacement (use $1, $<name>)'});
-    const hl = el('div',{class:'out'}), groups = el('div',{class:'kv'}), repout = outputBox();
+    const warn = el('p',{class:'sub warn',style:'display:none'});
+    const hl = el('div',{class:'out',role:'status','aria-live':'polite'}), groups = el('div',{class:'kv'}), repout = outputBox();
     const run = ()=>{
       hl.classList.remove('err'); groups.innerHTML=''; hl.innerHTML='';
-      try{ new RegExp(pat.value, flags.value); }
-      catch(e){ hl.classList.add('err'); hl.textContent='Invalid regex: '+e.message; repout.textContent=''; return; }
+      const risk = analyzeRegexRisk(pat.value);
+      warn.style.display = risk.risky ? '' : 'none';
+      warn.textContent = risk.reason;
       const s = test.value;
-      const g = new RegExp(pat.value, flags.value.includes('g')?flags.value:flags.value+'g');
-      let last=0, m, count=0, first=null;
-      while((m=g.exec(s))){
-        if(!first) first=m;
-        hl.append(document.createTextNode(s.slice(last,m.index)), el('mark',{},m[0]||''));
-        last=m.index+(m[0].length||0);
-        if(m[0]==='') g.lastIndex++;
-        if(++count>10000) break;
+      let scan;
+      try{ scan = regexScan(pat.value, flags.value, s); }
+      catch(e){ hl.classList.add('err'); hl.textContent='Invalid regex: '+e.message; repout.textContent=''; return; }
+      let last=0;
+      for(const m of scan.matches){
+        hl.append(document.createTextNode(s.slice(last,m.index)), el('mark',{},m.value||''));
+        last = m.index + m.value.length;
       }
       hl.append(document.createTextNode(s.slice(last)));
-      if(!count) hl.append(el('span',{style:'color:var(--muted)'},'(no matches)'));
+      if(!scan.matches.length) hl.append(el('span',{style:'color:var(--muted)'},'(no matches)'));
       const add=(k,v)=>groups.append(el('div',{class:'k'},k),el('div',{},v??''));
-      add('Matches', String(count));
-      if(first){ first.forEach((val,i)=> i>0 && add('Group '+i, val));
-        if(first.groups) for(const [k,v] of Object.entries(first.groups)) add('$<'+k+'>', v); }
-      try{ repout.classList.remove('err'); repout.textContent = rep.value ? s.replace(g, rep.value) : '(add a replacement)'; }
+      add('Matches', String(scan.matches.length)+(scan.truncated?' (capped)':''));
+      if(scan.timedOut) add('Stopped early','This pattern was too slow on this input — results are partial.');
+      const first = scan.matches[0];
+      if(first){ first.groups.forEach((val,i)=> add('Group '+(i+1), val));
+        if(first.named) for(const [k,v] of Object.entries(first.named)) add('$<'+k+'>', v); }
+      try{
+        repout.classList.remove('err');
+        if(!rep.value){ repout.textContent='(add a replacement)'; return; }
+        const gf = flags.value.includes('g')?flags.value:flags.value+'g';
+        repout.textContent = s.replace(new RegExp(pat.value, gf), rep.value);
+      }
       catch(e){ repout.classList.add('err'); repout.textContent=e.message; }
     };
     [pat,flags,test,rep].forEach(x=>x.addEventListener('input',run));
     root.append(el('div',{class:'two'}, field('Pattern', pat), field('Flags', flags)),
+      warn,
       field('Test string', test), field('Matches (highlighted)', hl),
       field('Groups (first match)', groups), field('Replacement', rep), field('Replace result', repout));
     run();
@@ -907,6 +959,30 @@ tool({ id:'qr-reader', emoji:'📷', name:'QR reader', blurb:'Read a QR code fro
 const nav = document.getElementById('nav');
 const main = document.getElementById('main');
 
+// ---------- theme + recents (local only, never uploaded) ----------
+const THEME_KEY='tools-theme', RECENT_KEY='tools-recent';
+const themeBtn=document.getElementById('theme-toggle');
+const store=(fn,fallback)=>{ try{ return fn(); }catch{ return fallback; } };
+const systemTheme=()=> (typeof matchMedia==='function' && matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+function applyTheme(mode){
+  document.documentElement.setAttribute('data-theme',mode);
+  themeBtn.textContent = mode==='light' ? '☀️' : '🌙';
+  themeBtn.setAttribute('aria-label', mode==='light' ? 'Switch to dark theme' : 'Switch to light theme');
+  const meta=document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.content = mode==='light' ? '#f5f7fc' : '#0c0d12';
+}
+applyTheme(store(()=>localStorage.getItem(THEME_KEY),null) || systemTheme());
+themeBtn.addEventListener('click',()=>{
+  const next = document.documentElement.getAttribute('data-theme')==='light' ? 'dark' : 'light';
+  store(()=>localStorage.setItem(THEME_KEY,next));
+  applyTheme(next);
+});
+
+const readRecent=()=>store(()=>JSON.parse(localStorage.getItem(RECENT_KEY)||'[]'),[])
+  .filter(id=>tools.some(t=>t.id===id));
+const rememberTool=(id)=>store(()=>localStorage.setItem(RECENT_KEY,
+  JSON.stringify([id,...readRecent().filter(x=>x!==id)].slice(0,5))));
+
 nav.append(el('a',{href:'#','data-home':'1',onclick:(e)=>{e.preventDefault();location.hash='';}},'🏠 All tools'));
 for(const t of tools) nav.append(el('a',{href:'#'+t.id},`${t.emoji}  ${t.name}`));
 
@@ -1027,8 +1103,17 @@ function renderHome(){
     categoryRow.append(button);
   }
   renderGrid();
+  const recentIds = readRecent();
+  if(recentIds.length){
+    const recentRow = el('div',{class:'categories','aria-label':'Recently used tools'});
+    for(const id of recentIds){
+      const t = tools.find(x=>x.id===id);
+      if(t) recentRow.append(el('a',{class:'category',href:'#'+id},`${t.emoji} ${t.name}`));
+    }
+    main.append(el('h2',{class:'section-label'},'Recently used'), recentRow);
+  }
   main.append(
-    el('h2',{style:'margin:22px 2px 8px;font-size:.9rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em'},'Browse tools'),
+    el('h2',{class:'section-label'},'Browse tools'),
     categoryRow,
     toolCount,
     grid,
@@ -1069,6 +1154,11 @@ const toolSEO = {
     title: 'QR Code Reader — Scan QR Images Locally in Your Browser',
     description: 'Read QR codes from local image files with your browser built-in barcode detector. No image upload, accounts, or server processing.',
     keywords: 'qr code reader, qr scanner image, scan qr code from image, barcode detector, offline qr scanner'
+  },
+  escape: {
+    title: 'Escape & Unescape — HTML Entities, JS Strings & Regex Literals',
+    description: 'Escape or unescape HTML entities, JavaScript/JSON string literals, and regular-expression metacharacters. Runs entirely in your browser.',
+    keywords: 'html escape, html entities, unescape html, javascript string escape, regex escape, json string escape'
   },
   url: { 
     title: 'URL Encoder & Decoder — Encode & Parse Query Strings Online',
@@ -1161,7 +1251,7 @@ function updateSEOTags(toolId){
   const seo = toolSEO[toolId] || {};
   const title = seo.title || 'Tools — paste anything, it finds the right dev tool';
   const keywords = seo.keywords || 'developer tools, json formatter, base64 encode decode';
-  const description = seo.description || 'Private, offline developer toolbox with 23 utilities. 100% in your browser, nothing uploaded.';
+  const description = seo.description || 'Private, offline developer toolbox with 24 utilities. 100% in your browser, nothing uploaded.';
   
   // Update title and meta tags
   document.title = title;
@@ -1209,6 +1299,7 @@ function route(){
   const t = tools.find(x=>x.id===id);
   for(const a of nav.querySelectorAll('a')) a.classList.toggle('active', t ? a.getAttribute('href')==='#'+id : a.dataset.home==='1');
   if(!t){ renderHome(); return; }
+  rememberTool(t.id);
   if(window.vtrack) window.vtrack(t.id);
   main.innerHTML='';
   main.append(el('h1',{},`${t.emoji} ${t.name}`), el('p',{class:'sub'},t.blurb));
