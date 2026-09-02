@@ -34,15 +34,15 @@ This document describes:
 | Keyboard shortcuts | ✅ | Ctrl/Cmd+K opens palette; Enter submits; Esc closes |
 | Tool navigation | ✅ | Arrow keys in palette; Enter to select |
 | Copy button | ✅ | Accessible via Tab + Enter |
-| No keyboard trap | ✅ | Can Esc out of palette; Tab eventually leaves all inputs |
+| Modal focus handling | ✅ | Palette takes focus, keeps Tab within search, and restores its trigger on Esc |
 
 ### Screen Reader Support
 
 | Feature | Status | Notes |
 |---|---|---|
 | Form labels | ✅ | ARIA associations allow screen readers to announce field purpose |
-| Error messages | ⚠️ | Error text shown visually (`.err` class) but not announced to screen readers |
-| Live regions | ⚠️ | Copy success message ("Copied ✓") not announced as live update |
+| Error messages | ✅ | Tool outputs, including errors, use polite live-status regions |
+| Live regions | ✅ | Copy success/failure is announced through a shared polite live region |
 | Aria-labels | ⚠️ | Some buttons lack explicit aria-label (icon emoji + text is often unclear) |
 | Table headers | ✅ | Query parameter table has key/value headers (implicit via layout) |
 | List semantics | ⚠️ | Navigation menu uses `<a>` tags (not `<ul>`, no `role="list"`) |
@@ -62,11 +62,11 @@ This document describes:
 
 | Scenario | Status | Notes |
 |---|---|---|
-| Palette opens (Ctrl+K) | ⚠️ | Focus not automatically moved to search input |
-| Tool selected in palette | ⚠️ | Focus not returned to tool after Esc |
+| Palette opens (Ctrl+K) | ✅ | Focus moves to the search input |
+| Palette closes (Esc) | ✅ | Focus returns to the invoking element |
 | Hash navigation | ✅ | New tool render; focus stays in main |
 
-**Action**: Trap focus in palette (prevent Tab outside); restore focus on close.
+**Verification**: Covered by the jsdom interaction suite.
 
 ---
 
@@ -74,12 +74,8 @@ This document describes:
 
 | Issue | Severity | Impact | Remediation |
 |---|---|---|---|
-| **Error messages not announced** | Medium | Screen reader users don't know about validation errors | Wrap error in `role="alert"` or `aria-live="polite"` |
-| **Copy success not announced** | Low | Screen reader users miss feedback | Make copy flash a live region |
-| **Palette focus not trapped** | Medium | User may accidentally tab out; confusing | Add focus trap + restore on close |
 | **Aria-label on icon buttons missing** | Low | "Generate" button next to hex input ambiguous | Add aria-label="Generate IDs" |
 | **Query param table not marked** | Low | Screen reader may not identify as table | Use semantic `<table>` or add `role="table"` |
-| **No skip link** | Low | User must Tab through nav to reach main content | Add hidden skip link to `<main>` |
 | **Mobile focus styles** | Low | Touch users don't see focus indicator | Add visible focus on `:focus-visible` for keyboard |
 
 ---
@@ -89,20 +85,20 @@ This document describes:
 ### Phase 1: Quick Wins (< 1 hour)
 
 - [ ] Add `aria-label` to icon-only buttons (e.g., "Generate IDs", "Copy output")
-- [ ] Wrap error messages in `<div role="alert">` for instant announcement
-- [ ] Add `aria-live="polite"` to copy flash message container
+- [x] Announce result and error updates with polite live-status regions
+- [x] Add a shared `aria-live="polite"` copy-feedback announcer
 - [ ] Add CSS for `button:focus-visible` with clear outline
 
 ### Phase 2: Focus Management (1–2 hours)
 
-- [ ] Implement focus trap in palette (prevent Tab out)
-- [ ] Restore focus to trigger element when palette closes (Esc)
-- [ ] Focus search input automatically when palette opens
+- [x] Keep Tab focus in the palette search control
+- [x] Restore focus to trigger element when palette closes (Esc)
+- [x] Focus search input automatically when palette opens
 
 ### Phase 3: Semantic Improvements (1–2 hours)
 
 - [ ] Convert query parameter display to semantic `<table>` (for screen readers)
-- [ ] Add hidden `<a href="#main">Skip to main content</a>` link
+- [x] Add a visible-on-focus `<a href="#main">Skip to main content</a>` link
 - [ ] Review navigation menu semantics (consider `role="navigation"` or `<nav>`)
 
 ### Phase 4: Testing & Audit (2–3 hours)

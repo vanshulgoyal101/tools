@@ -228,6 +228,27 @@ test.describe('Tools E2E smoke', () => {
     await expect(page).toHaveURL(/#base64$/);
   });
 
+  test('Command palette: contains focus and restores its trigger', async ({ page }) => {
+    await page.goto('/');
+    const trigger = page.locator('nav a[href="#json"]');
+    await trigger.focus();
+    await page.keyboard.press('Control+k');
+    const paletteInput = page.locator('.palette input');
+    await expect(paletteInput).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(paletteInput).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(trigger).toBeFocused();
+  });
+
+  test('Skip link: is keyboard-visible and targets main content', async ({ page }) => {
+    await page.goto('/');
+    const skipLink = page.getByRole('link', { name: 'Skip to main content' });
+    await skipLink.focus();
+    await expect(skipLink).toBeVisible();
+    await expect(skipLink).toHaveAttribute('href', '#main');
+  });
+
   test('Navigation: home to JSON route', async ({ page }) => {
     await page.goto('/');
     await page.locator('nav a[href="#json"]').click();

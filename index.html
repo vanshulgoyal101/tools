@@ -100,6 +100,9 @@
     min-height:100vh;-webkit-text-size-adjust:100%;
   }
   a{color:var(--accent)}
+  .skip-link{position:absolute;top:8px;left:8px;z-index:100;background:var(--accent);color:var(--bg);padding:8px 12px;border-radius:8px;font-weight:600;transform:translateY(-150%)}
+  .skip-link:focus{transform:translateY(0)}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
   .layout{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
   aside{border-right:1px solid var(--line);padding:20px 14px;position:sticky;top:0;height:100vh;overflow:auto}
   .brand{font-weight:700;font-size:1.25rem;letter-spacing:-.02em;padding:6px 10px 12px;display:flex;align-items:center;gap:8px}
@@ -167,6 +170,7 @@
 </style>
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to main content</a>
 <div class="layout">
   <aside>
     <div class="brand">🧰 <span>Tools<small>runs in your browser</small></span></div>
@@ -174,6 +178,7 @@
   </aside>
   <main id="main"></main>
 </div>
+<div id="announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
 <footer class="site-info">
   <div class="wrap">
@@ -249,7 +254,13 @@ const el = (tag, attrs={}, ...kids)=>{
   return n;
 };
 const copy = async (text, btn)=>{
-  const flash=(msg)=>{ if(!btn) return; const t=btn.textContent; btn.textContent=msg; setTimeout(()=>btn.textContent=t,1200); };
+  const flash=(msg)=>{
+    document.getElementById('announcer').textContent=msg;
+    if(!btn) return;
+    const t=btn.textContent;
+    btn.textContent=msg;
+    setTimeout(()=>btn.textContent=t,1200);
+  };
   try{ await navigator.clipboard.writeText(text); flash('Copied ✓'); }
   catch{ flash('Copy failed'); }
 };
@@ -261,13 +272,13 @@ function field(labelText, node){
   const lbl = el('label',{class:'small',id:labelId}, labelText);
   if(node?.id) lbl.setAttribute('for', node.id);
   else if(node){
-    node.setAttribute('role','region');
+    if(!node.hasAttribute('role')) node.setAttribute('role','region');
     node.setAttribute('aria-labelledby',labelId);
   }
   wrap.append(lbl, node);
   return wrap;
 }
-function outputBox(){ return el('div',{class:'out'}); }
+function outputBox(){ return el('div',{class:'out',role:'status','aria-live':'polite','aria-atomic':'true'}); }
 
 // base64 helpers, JSON<->YAML and the QR encoder are imported from ./lib.js (top of module).
 
@@ -953,12 +964,15 @@ function renderSmart(resultsEl, text){
 }
 
 function buildPalette(){
-  const overlay=el('div',{class:'palette'});
-  const input=el('input',{placeholder:'Jump to a tool…',spellcheck:'false'});
+  const overlay=el('div',{class:'palette',role:'dialog','aria-modal':'true','aria-label':'Tool command palette'});
+  const input=el('input',{placeholder:'Jump to a tool…',spellcheck:'false','aria-label':'Search tools'});
   const list=el('div',{class:'list'});
   overlay.append(el('div',{class:'box'}, input, list)); document.body.append(overlay);
-  let sel=0, items=[];
-  const close=()=>overlay.classList.remove('on');
+  let sel=0, items=[], lastFocus=null;
+  const close=()=>{
+    overlay.classList.remove('on');
+    lastFocus?.focus?.();
+  };
   const render=()=>{
     const q=input.value.trim().toLowerCase();
     items=tools.filter(t=>!q||(t.name+' '+t.blurb+' '+t.id+' '+categoryFor(t.id)).toLowerCase().includes(q));
@@ -973,9 +987,10 @@ function buildPalette(){
     else if(e.key==='ArrowUp'){sel=Math.max(sel-1,0);render();e.preventDefault();}
     else if(e.key==='Enter'&&items[sel]){location.hash='#'+items[sel].id;close();}
     else if(e.key==='Escape'){close();}
+    else if(e.key==='Tab'){e.preventDefault();input.focus();}
   });
   overlay.addEventListener('click',(e)=>{ if(e.target===overlay)close(); });
-  return { open:()=>{ overlay.classList.add('on'); input.value=''; sel=0; render(); setTimeout(()=>input.focus(),0); } };
+  return { open:()=>{ lastFocus=document.activeElement; overlay.classList.add('on'); input.value=''; sel=0; render(); setTimeout(()=>input.focus(),0); } };
 }
 const palette=buildPalette();
 window.addEventListener('keydown',(e)=>{ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){ e.preventDefault(); palette.open(); } });

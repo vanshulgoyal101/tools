@@ -134,7 +134,7 @@ describe('shipped app DOM interactions', () => {
     input(window, source, '{"a":1}');
     document.querySelector('button.primary')?.click();
 
-    expect(document.querySelector('[role="region"]')?.textContent).toBe('{\n  "a": 1\n}');
+    expect(document.querySelector('[role="status"]')?.textContent).toBe('{\n  "a": 1\n}');
   });
 
   it('shows a JSON error then recovers when the next input is valid', () => {
@@ -143,7 +143,7 @@ describe('shipped app DOM interactions', () => {
     const source = document.querySelector('textarea');
     input(window, source, '{invalid');
 
-    const output = document.querySelector('[role="region"]');
+    const output = document.querySelector('[role="status"]');
     expect(output?.classList.contains('err')).toBe(true);
     expect(output?.textContent).toContain('Invalid JSON');
     input(window, source, '{"ok":true}');
@@ -180,7 +180,7 @@ describe('shipped app DOM interactions', () => {
     expect(selects.map((select) => select.value)).toEqual(['10', '10']);
     change(window, selects[1], '16');
 
-    expect(document.querySelector('[role="region"]')?.textContent).toBe('ff');
+    expect(document.querySelector('[role="status"]')?.textContent).toBe('ff');
     expect(document.querySelectorAll('.kv')[0]?.textContent).toContain('Binary');
   });
 
@@ -203,7 +203,7 @@ describe('shipped app DOM interactions', () => {
     expect(chooseImage?.disabled).toBe(true);
     expect(note?.classList.contains('err')).toBe(true);
     expect(note?.textContent).toContain('BarcodeDetector API');
-    expect(document.querySelector('[role="region"]')?.textContent).toBe('');
+    expect(document.querySelector('[role="status"]')?.textContent).toBe('');
   });
 
   it('uses the native QR detector for a selected local image when supported', async () => {
@@ -224,7 +224,7 @@ describe('shipped app DOM interactions', () => {
     file.dispatchEvent(new window.Event('change', { bubbles: true }));
     await new Promise((resolve) => window.setTimeout(resolve, 0));
 
-    expect(document.querySelector('[role="region"]')?.textContent).toBe('https://tools.vanshul.com');
+    expect(document.querySelector('[role="status"]')?.textContent).toBe('https://tools.vanshul.com');
     expect(document.querySelector('.image-preview')?.getAttribute('src')).toBe('blob:local-qr');
     expect(revokedUrl).toBe('blob:local-qr');
   });
@@ -256,5 +256,21 @@ describe('shipped app DOM interactions', () => {
 
     expect(palette?.classList.contains('on')).toBe(false);
     expect(window.location.hash).toBe('');
+  });
+
+  it('moves focus into the palette, retains Tab focus, and restores its trigger', async () => {
+    const window = boot();
+    const { document } = window;
+    const trigger = document.querySelector('nav a[href="#json"]');
+    trigger.focus();
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
+    const paletteInput = document.querySelector('.palette input');
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+    expect(document.activeElement).toBe(paletteInput);
+    paletteInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    expect(document.activeElement).toBe(paletteInput);
+    paletteInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(document.activeElement).toBe(trigger);
   });
 });
