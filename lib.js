@@ -549,6 +549,223 @@ export function regexScan(pattern, flags, text, options = {}) {
   return { matches, truncated, timedOut };
 }
 
+/* ------------------------------------------------------------------ *
+ * SQL formatter (dialect-agnostic; preserves strings and comments)
+ * ------------------------------------------------------------------ */
+const SQL_KEYWORDS = new Set(['SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'NOT', 'NULL', 'IS', 'IN', 'AS', 'ON', 'JOIN', 'INNER', 'LEFT', 'RIGHT', 'FULL', 'OUTER', 'CROSS', 'GROUP', 'ORDER', 'BY', 'HAVING', 'LIMIT', 'OFFSET', 'UNION', 'ALL', 'EXCEPT', 'INTERSECT', 'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET', 'DELETE', 'RETURNING', 'WITH', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'DISTINCT', 'ASC', 'DESC', 'LIKE', 'ILIKE', 'BETWEEN', 'EXISTS', 'CREATE', 'TABLE', 'VIEW', 'INDEX', 'PRIMARY', 'KEY', 'FOREIGN', 'REFERENCES', 'DEFAULT', 'CASCADE', 'ALTER', 'ADD', 'COLUMN', 'DROP', 'IF', 'TRUE', 'FALSE', 'CONFLICT', 'DO', 'NOTHING', 'USING', 'OVER', 'PARTITION', 'CAST', 'COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'COALESCE', 'NULLIF']);
+// Longest phrases first so "GROUP BY" wins over "GROUP".
+const SQL_CLAUSES = ['INSERT INTO', 'DELETE FROM', 'GROUP BY', 'ORDER BY', 'UNION ALL', 'ON CONFLICT', 'SELECT', 'FROM', 'WHERE', 'HAVING', 'LIMIT', 'OFFSET', 'UNION', 'EXCEPT', 'INTERSECT', 'VALUES', 'UPDATE', 'SET', 'RETURNING', 'WITH'];
+const SQL_JOINS = ['LEFT OUTER JOIN', 'RIGHT OUTER JOIN', 'FULL OUTER JOIN', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'FULL JOIN', 'CROSS JOIN', 'JOIN'];
+// Uppercased like keywords, but they hug their opening parenthesis.
+const SQL_FUNCTIONS = new Set(['COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'COALESCE', 'NULLIF', 'CAST', 'ROUND', 'UPPER', 'LOWER', 'LENGTH', 'ABS', 'TRIM', 'CONCAT']);
+
+export function sqlTokenize(src) {
+  const s = String(src ?? '');
+  const out = [];
+  let i = 0;
+  while (i < s.length) {
+    const c = s[i];
+    if (/\s/.test(c)) { i++; continue; }
+    if (c === '-' && s[i + 1] === '-') {
+      const nl = s.indexOf('\n', i); const end = nl === -1 ? s.length : nl;
+      out.push({ t: 'comment', v: s.slice(i, end).trimEnd() }); i = end; continue;
+    }
+    if (c === '/' && s[i + 1] === '*') {
+      const close = s.indexOf('*/', i + 2); const end = close === -1 ? s.length : close + 2;
+      out.push({ t: 'comment', v: s.slice(i, end) }); i = end; continue;
+    }
+    if (c === "'" || c === '"' || c === '`') {
+      let j = i + 1;
+      while (j < s.length) {
+        if (s[j] === '\\') { j += 2; continue; }
+        if (s[j] === c) { if (s[j + 1] === c) { j += 2; continue; } break; }
+        j++;
+      }
+      out.push({ t: 'string', v: s.slice(i, Math.min(j + 1, s.length)) }); i = j + 1; continue;
+    }
+    if (/[0-9]/.test(c)) { let j = i; while (j < s.length && /[0-9.]/.test(s[j])) j++; out.push({ t: 'num', v: s.slice(i, j) }); i = j; continue; }
+    if (/[A-Za-z_@#$]/.test(c)) { let j = i; while (j < s.length && /[\w$#@.]/.test(s[j])) j++; out.push({ t: 'word', v: s.slice(i, j) }); i = j; continue; }
+    const two = s.slice(i, i + 2);
+    if (['<=', '>=', '<>', '!=', '||', '::'].includes(two)) { out.push({ t: 'punct', v: two }); i += 2; continue; }
+    out.push({ t: 'punct', v: c }); i++;
+  }
+  return out;
+}
+
+function matchSqlPhrase(tokens, i, phrases) {
+  for (const phrase of phrases) {
+    const words = phrase.split(' ');
+    let ok = true;
+    for (let k = 0; k < words.length; k++) {
+      const tk = tokens[i + k];
+      if (!tk || tk.t !== 'word' || tk.v.toUpperCase() !== words[k]) { ok = false; break; }
+    }
+    if (ok) return { text: phrase, words: words.length, raw: tokens.slice(i, i + words.length).map((t) => t.v).join(' ') };
+  }
+  return null;
+}
+
+export function sqlFormat(sql, options = {}) {
+  const { indent = '  ', uppercase = true } = options;
+  const tokens = sqlTokenize(sql);
+  if (!tokens.length) return '';
+
+  const lines = [];
+  const groups = [{ multiline: true, listIndent: 0 }];
+  const top = () => groups[groups.length - 1];
+  let cur = '', depth = 0, prevKeyword = false;
+
+  const flush = () => { if (cur.trim()) lines.push(cur.replace(/\s+$/, '')); cur = ''; };
+  const startLine = (extra = 0) => { flush(); cur = indent.repeat(Math.max(0, depth + extra)); };
+  const append = (txt) => {
+    if (!cur.trim()) { cur += txt; return; }
+    const last = cur[cur.length - 1];
+    if (txt === ',' || txt === ')' || txt === ';' || txt === '::') { cur += txt; return; }
+    if (last === '(' || cur.endsWith('::')) { cur += txt; return; }
+    if (txt === '(' && !prevKeyword && /[\w"'`\])]/.test(last)) { cur += txt; return; }
+    cur += ' ' + txt;
+  };
+
+  for (let i = 0; i < tokens.length; i++) {
+    const tk = tokens[i];
+
+    if (tk.t === 'comment') { startLine(top().listIndent); append(tk.v); flush(); prevKeyword = false; continue; }
+
+    if (tk.t === 'word') {
+      const clause = matchSqlPhrase(tokens, i, SQL_CLAUSES);
+      if (clause) {
+        i += clause.words - 1;
+        startLine(0);
+        append(uppercase ? clause.text : clause.raw);
+        top().listIndent = ['SELECT', 'VALUES', 'SET'].includes(clause.text) ? 1 : 0;
+        if (top().listIndent) startLine(1);
+        prevKeyword = true;
+        continue;
+      }
+      const join = matchSqlPhrase(tokens, i, SQL_JOINS);
+      if (join) {
+        i += join.words - 1;
+        top().listIndent = 0;
+        startLine(0);
+        append(uppercase ? join.text : join.raw);
+        prevKeyword = true;
+        continue;
+      }
+      const up = tk.v.toUpperCase();
+      if (up === 'AND' || up === 'OR' || up === 'ON') { startLine(1); append(uppercase ? up : tk.v); prevKeyword = true; continue; }
+      const isKeyword = SQL_KEYWORDS.has(up);
+      append(isKeyword && uppercase ? up : tk.v);
+      prevKeyword = isKeyword && !SQL_FUNCTIONS.has(up);
+      continue;
+    }
+
+    if (tk.t === 'punct') {
+      if (tk.v === '(') {
+        const next = tokens[i + 1];
+        const multiline = Boolean(next && next.t === 'word' && ['SELECT', 'WITH'].includes(next.v.toUpperCase()));
+        append('(');
+        groups.push({ multiline, listIndent: 0 });
+        if (multiline) { depth++; startLine(0); }
+        prevKeyword = false;
+        continue;
+      }
+      if (tk.v === ')') {
+        const group = groups.length > 1 ? groups.pop() : top();
+        if (group.multiline && depth > 0) { depth--; startLine(0); }
+        append(')');
+        prevKeyword = false;
+        continue;
+      }
+      if (tk.v === ',') { append(','); if (top().multiline) startLine(top().listIndent); prevKeyword = false; continue; }
+      if (tk.v === ';') { append(';'); flush(); prevKeyword = false; continue; }
+      append(tk.v);
+      prevKeyword = false;
+      continue;
+    }
+
+    append(tk.v);
+    prevKeyword = false;
+  }
+  flush();
+  return lines.join('\n');
+}
+
+/* ------------------------------------------------------------------ *
+ * Python whitespace formatter
+ * Normalises indentation width, tabs, trailing space and blank runs.
+ * Block structure is taken from the source, never inferred, so the
+ * meaning of the program is preserved.
+ * ------------------------------------------------------------------ */
+export function scanPythonLine(line, state = { bracket: 0, triple: null }) {
+  let { bracket, triple } = state;
+  let lastCode = '';
+  let i = 0;
+  while (i < line.length) {
+    const c = line[i];
+    if (triple) {
+      if (line.startsWith(triple, i)) { triple = null; i += 3; continue; }
+      i++; continue;
+    }
+    if (c === '#') break;
+    if (line.startsWith('"""', i) || line.startsWith("'''", i)) { triple = line.slice(i, i + 3); i += 3; continue; }
+    if (c === '"' || c === "'") {
+      const quote = c; i++;
+      while (i < line.length) {
+        if (line[i] === '\\') { i += 2; continue; }
+        if (line[i] === quote) { i++; break; }
+        i++;
+      }
+      lastCode = quote;
+      continue;
+    }
+    if ('([{'.includes(c)) bracket++;
+    else if (')]}'.includes(c)) bracket = Math.max(0, bracket - 1);
+    if (!/\s/.test(c)) lastCode = c;
+    i++;
+  }
+  return { bracket, triple, continues: lastCode === '\\' };
+}
+
+export function pythonFormat(source, options = {}) {
+  const { indentSize = 4 } = options;
+  const unit = ' '.repeat(indentSize);
+  const lines = String(source ?? '').replace(/\r\n?/g, '\n').split('\n');
+  const out = [];
+  const widths = [0];
+  let level = 0, continued = false;
+  let state = { bracket: 0, triple: null };
+
+  for (const original of lines) {
+    if (state.triple) { out.push(original); state = scanPythonLine(original, state); continue; }
+
+    const expanded = original.replace(/\t/g, unit);
+    const trimmed = expanded.trim();
+    if (trimmed === '') { out.push(''); continue; }
+
+    if (state.bracket > 0 || continued) {
+      const closesFirst = /^[)\]}]/.test(trimmed);
+      out.push(unit.repeat(level + (closesFirst ? 0 : 1)) + trimmed);
+    } else {
+      const width = expanded.length - expanded.trimStart().length;
+      if (width > widths[widths.length - 1]) { widths.push(width); level++; }
+      else while (widths.length > 1 && width < widths[widths.length - 1]) { widths.pop(); level--; }
+      out.push(unit.repeat(level) + trimmed);
+    }
+    state = scanPythonLine(expanded, state);
+    continued = state.continues;
+  }
+
+  const collapsed = [];
+  let blanks = 0;
+  for (const line of out) {
+    if (line === '') { blanks++; if (blanks > 2) continue; } else blanks = 0;
+    collapsed.push(line);
+  }
+  while (collapsed.length && collapsed[0] === '') collapsed.shift();
+  while (collapsed.length && collapsed[collapsed.length - 1] === '') collapsed.pop();
+  return collapsed.length ? collapsed.join('\n') + '\n' : '';
+}
+
 // Line diff via LCS. Returns [{ t: ' '|'-'|'+', line }]. Throws if too large.
 export const DIFF_LIMIT = 4_000_000;
 export function diffLines(aText, bText) {

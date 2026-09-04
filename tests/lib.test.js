@@ -13,6 +13,7 @@ import {
   markdownToHtml,
   escapeHtml, unescapeHtml, escapeRegex, escapeJsString, unescapeJsString,
   analyzeRegexRisk, regexScan, REGEX_MATCH_LIMIT,
+  sqlFormat, sqlTokenize, pythonFormat,
   diffLines, DIFF_LIMIT,
   parseColor, rgbToHsl, rgbToHex, hslToRgb,
   parseCronField, describeCron, cronNextRuns,
@@ -326,6 +327,72 @@ describe('regex safety', () => {
     });
     expect(timedOut).toBe(true);
     expect(matches.length).toBeLessThan(5000);
+  });
+});
+
+describe('sql formatter', () => {
+  it('breaks clauses onto their own lines and uppercases keywords', () => {
+    expect(sqlFormat('select a,b from t where x=1 and y=2')).toBe(
+      ['SELECT', '  a,', '  b', 'FROM t', 'WHERE x = 1', '  AND y = 2'].join('\n'),
+    );
+  });
+  it('formats joins and their on-conditions', () => {
+    expect(sqlFormat('select u.id from users u left join orders o on o.user_id=u.id')).toBe(
+      ['SELECT', '  u.id', 'FROM users u', 'LEFT JOIN orders o', '  ON o.user_id = u.id'].join('\n'),
+    );
+  });
+  it('indents subqueries', () => {
+    expect(sqlFormat('select * from (select id from t) x')).toBe(
+      ['SELECT', '  *', 'FROM (', '  SELECT', '    id', '  FROM t', ') x'].join('\n'),
+    );
+  });
+  it('never reformats inside string literals or comments', () => {
+    expect(sqlFormat("select 'a, b' from t -- keep, this")).toBe(
+      ['SELECT', "  'a, b'", 'FROM t', '-- keep, this'].join('\n'),
+    );
+  });
+  it('keeps function calls tight but spaces keyword parens', () => {
+    expect(sqlFormat('select count(*) from t where id in (1,2)')).toContain('COUNT(*)');
+    expect(sqlFormat('select count(*) from t where id in (1,2)')).toContain('IN (1, 2)');
+  });
+  it('can leave keyword casing alone', () => {
+    expect(sqlFormat('select a from t', { uppercase: false })).toBe(['select', '  a', 'from t'].join('\n'));
+  });
+  it('returns an empty string for empty input', () => {
+    expect(sqlFormat('   ')).toBe('');
+  });
+  it('tokenizes strings with doubled-quote escapes as one token', () => {
+    const tokens = sqlTokenize("select 'it''s'");
+    expect(tokens[1]).toEqual({ t: 'string', v: "'it''s'" });
+  });
+});
+
+describe('python formatter', () => {
+  it('normalises tabs and mixed indentation to a fixed width', () => {
+    expect(pythonFormat('def f():\n\tif x:\n\t\treturn 1\n')).toBe(
+      'def f():\n    if x:\n        return 1\n',
+    );
+  });
+  it('preserves dedents such as else branches', () => {
+    expect(pythonFormat('if a:\n  x = 1\nelse:\n  y = 2\n')).toBe(
+      'if a:\n    x = 1\nelse:\n    y = 2\n',
+    );
+  });
+  it('indents bracket continuations and closes at the outer level', () => {
+    expect(pythonFormat('x = [\n1,\n2,\n]\n')).toBe('x = [\n    1,\n    2,\n]\n');
+  });
+  it('leaves triple-quoted string contents untouched', () => {
+    const src = 'def f():\n        """Doc.\n      keep   this\n        """\n        return 1\n';
+    expect(pythonFormat(src)).toBe('def f():\n    """Doc.\n      keep   this\n        """\n    return 1\n');
+  });
+  it('strips trailing whitespace and collapses long blank runs', () => {
+    expect(pythonFormat('a = 1   \n\n\n\n\nb = 2\n')).toBe('a = 1\n\n\nb = 2\n');
+  });
+  it('does not treat a backslash inside a comment as a continuation', () => {
+    expect(pythonFormat('a = 1  # trailing \\\nb = 2\n')).toBe('a = 1  # trailing \\\nb = 2\n');
+  });
+  it('returns an empty string for blank input', () => {
+    expect(pythonFormat('\n\n')).toBe('');
   });
 });
 

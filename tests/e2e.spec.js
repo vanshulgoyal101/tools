@@ -227,6 +227,20 @@ test.describe('Tools E2E smoke', () => {
     await expect(cell).toHaveText(/Copied|Copy failed/);
   });
 
+  test('SQL formatter: breaks clauses onto their own lines', async ({ page }) => {
+    await gotoTool(page, 'sql');
+    await page.getByLabel('SQL', { exact: true }).fill('select a,b from t where x=1');
+    const out = page.getByLabel('Formatted SQL');
+    await expect(out).toContainText('FROM t');
+    expect((await out.textContent()).split('\n')).toEqual(['SELECT', '  a,', '  b', 'FROM t', 'WHERE x = 1']);
+  });
+
+  test('Python format: converts tabs to spaces', async ({ page }) => {
+    await gotoTool(page, 'python');
+    await page.getByLabel('Python', { exact: true }).fill('def f():\n\treturn 1');
+    expect(await page.getByLabel('Formatted Python').textContent()).toBe('def f():\n    return 1\n');
+  });
+
   test('Escape tool: escapes HTML entities', async ({ page }) => {
     await gotoTool(page, 'escape');
     await page.getByLabel('Input').fill('<b>Tom & Jerry</b>');

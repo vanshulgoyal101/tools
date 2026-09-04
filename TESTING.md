@@ -6,7 +6,7 @@ All business logic in `lib.js` is tested using [Vitest](https://vitest.dev). Tes
 
 **Current Coverage**: 62 unit tests covering ~90% of lib.js exports.
 
-**E2E Coverage**: 37 Playwright smoke tests covering all 25 tools, category browsing, Smart Paste, ⌘K, routing, PWA API availability, mobile viewport behavior, theme switching, and keyboard accessibility.
+**E2E Coverage**: 39 Playwright smoke tests covering all 27 tools, category browsing, Smart Paste, ⌘K, routing, PWA API availability, mobile viewport behavior, theme switching, and keyboard accessibility.
 
 **DOM Interaction Coverage**: jsdom executes the shipped inline application module and dispatches real input, change, click, and keyboard events for Smart Paste, category filters, command palette routing, JSON formatting, base conversion, Markdown preview, and unknown-route fallback. This catches regressions in the UI handlers without requiring a browser process.
 
@@ -111,7 +111,7 @@ Generates an HTML coverage report (see terminal output for path).
 | **ID & random** | 5 | uuidV4/V7 format, ULID length, nanoid/hex/pass lengths, uniqueness |
 | **Cron descriptions** | 8 | Plain-English descriptions for common patterns |
 
-**Total**: 86 unit tests, 24 jsdom interaction tests, and 37 cross-browser E2E scenarios
+**Total**: 101 unit tests, 26 jsdom interaction tests, and 39 cross-browser E2E scenarios
 
 ---
 

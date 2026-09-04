@@ -13,7 +13,7 @@
   }catch(e){}
 </script>
 <title>Tools — paste anything, it finds the right dev tool</title>
-<meta name="description" content="Smart Paste: drop in a JWT, JSON, Base64, URL-encoded text, a colour, a timestamp or a UUID and it auto-detects and decodes it. Plus 25 dev utilities and a ⌘K command palette — all 100% in your browser, offline, nothing uploaded.">
+<meta name="description" content="Smart Paste: drop in a JWT, JSON, Base64, URL-encoded text, a colour, a timestamp or a UUID and it auto-detects and decodes it. Plus 27 dev utilities and a ⌘K command palette — all 100% in your browser, offline, nothing uploaded.">
 <meta name="keywords" content="developer tools, json formatter, base64 encode decode, jwt decoder, sha-256 hash, uuid generator, regex tester, cron expression, json to yaml, json to typescript, curl to fetch, hmac generator, qr code generator, unix timestamp converter, url encoder, offline dev tools">
 <meta name="author" content="Vanshul Goyal">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
@@ -32,7 +32,7 @@
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Tools — paste anything, it finds the right dev tool">
-<meta name="twitter:description" content="Smart Paste + 25 offline developer utilities that run entirely in your browser. Nothing uploaded.">
+<meta name="twitter:description" content="Smart Paste + 27 offline developer utilities that run entirely in your browser. Nothing uploaded.">
 <meta name="twitter:image" content="https://tools.vanshul.com/og.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%B0%3C/text%3E%3C/svg%3E">
@@ -47,7 +47,7 @@
   "browserRequirements": "Requires JavaScript",
   "isAccessibleForFree": true,
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-  "description": "A private, offline-first collection of 25 everyday developer utilities plus a Smart Paste box that auto-detects JWTs, JSON, Base64, colours, timestamps and UUIDs. Everything runs entirely in the browser — nothing is uploaded.",
+  "description": "A private, offline-first collection of 27 everyday developer utilities plus a Smart Paste box that auto-detects JWTs, JSON, Base64, colours, timestamps and UUIDs. Everything runs entirely in the browser — nothing is uploaded.",
   "author": { "@type": "Person", "name": "Vanshul Goyal", "url": "https://vanshul.com" },
   "featureList": [
     "JSON formatter (pretty-print, minify, validate)",
@@ -74,7 +74,9 @@
     "QR code generator",
     "QR code reader",
     "HTML, JS string and regex escaping",
-    "Base32 encoder and decoder (RFC 4648)"
+    "Base32 encoder and decoder (RFC 4648)",
+    "SQL formatter",
+    "Python whitespace formatter"
   ]
 }
 </script>
@@ -210,7 +212,7 @@
 <footer class="site-info">
   <div class="wrap">
     <h2>Free, private, offline developer tools</h2>
-    <p><strong>tools.vanshul.com</strong> is a collection of 25 everyday developer utilities plus a Smart Paste box that auto-detects whatever you drop in. Every conversion runs entirely in your browser using plain JavaScript and the Web Crypto API — nothing is ever uploaded to a server, there are no accounts or ads, and the whole app works offline as an installable PWA.</p>
+    <p><strong>tools.vanshul.com</strong> is a collection of 27 everyday developer utilities plus a Smart Paste box that auto-detects whatever you drop in. Every conversion runs entirely in your browser using plain JavaScript and the Web Crypto API — nothing is ever uploaded to a server, there are no accounts or ads, and the whole app works offline as an installable PWA.</p>
     <h3>Every tool included</h3>
     <ul class="toollist">
       <li><b>JSON formatter</b> — pretty-print, minify &amp; validate JSON.</li>
@@ -238,6 +240,8 @@
       <li><b>QR reader</b> — read a QR code from a local image, without uploading it.</li>
       <li><b>Escape</b> — escape &amp; unescape HTML entities, JS strings and regex literals.</li>
       <li><b>Base32</b> — encode &amp; decode Base32 (RFC 4648).</li>
+      <li><b>SQL formatter</b> — format queries with clause breaks &amp; keyword casing.</li>
+      <li><b>Python format</b> — normalise indentation, tabs and blank lines.</li>
       <li><b>Smart Paste</b> — paste a JWT, JSON, Base64, colour, timestamp or UUID and it auto-detects &amp; decodes it.</li>
     </ul>
     <h3>Frequently asked questions</h3>
@@ -260,7 +264,7 @@
 <script type="module">
 import {
   encU8, decU8, bytesToB64, b64ToBytes, jsonToYaml, yamlToJson, qrEncode,
-  base32EncodeText, base32DecodeText,
+  base32EncodeText, base32DecodeText, sqlFormat, pythonFormat,
   crc32, jsonToTs, jsonPathQuery, sortKeys,
   csvToJson, jsonToCsv, slugify, toCamel, toPascal, toSnake, toKebab, toConstant,
   parseBaseNumber, formatBaseNumber, numberBaseInfo, markdownToHtml,
@@ -271,7 +275,7 @@ import {
   parseCurl, curlToFetch, curlToPython,
   detectPasteTypes, uuidV4, uuidV7, ulid, nanoid, randomHex, password,
   parseQuery
-} from './lib.js?v=8';
+} from './lib.js?v=9';
 
 // ---------- helpers ----------
 const el = (tag, attrs={}, ...kids)=>{
@@ -323,7 +327,7 @@ function copyCell(value, display){
 const tools = [];
 const tool = (t)=>tools.push(t);
 const categories = {
-  Data: ['json','yaml','jsonts','transform','diff','markdown'],
+  Data: ['json','yaml','jsonts','transform','diff','markdown','sql','python'],
   Encoding: ['base','base64','url','jwt','qr','qr-reader','escape','base32'],
   Security: ['hash','hmac','id'],
   'Web & API': ['curl','regex','cron'],
@@ -360,6 +364,49 @@ tool({ id:'json', emoji:'{ }', name:'JSON formatter', blurb:'Pretty-print, minif
         el('button',{class:'btn',onclick:()=>run(true)},'Minify'),
         el('button',{class:'btn',onclick:(e)=>copy(out.textContent,e.target)},'Copy')),
       field('Output', out));
+  }});
+
+// SQL formatter
+tool({ id:'sql', emoji:'🗃️', name:'SQL formatter', blurb:'Format SQL with clause breaks and keyword casing.',
+  render(root){
+    const inp = el('textarea',{placeholder:'select a,b from t where x=1 and y=2'});
+    const out = outputBox();
+    const casing = el('select',{}, el('option',{value:'upper'},'UPPERCASE keywords'), el('option',{value:'keep'},'Leave casing alone'));
+    const width = el('select',{}, el('option',{value:'2'},'2 spaces'), el('option',{value:'4'},'4 spaces'));
+    const run = ()=>{
+      try{
+        out.classList.remove('err');
+        out.textContent = sqlFormat(inp.value, { indent:' '.repeat(Number(width.value)), uppercase: casing.value==='upper' });
+      }catch(e){ out.classList.add('err'); out.textContent = e.message; }
+    };
+    inp.addEventListener('input',run); casing.addEventListener('change',run); width.addEventListener('change',run);
+    root.append(field('SQL', inp),
+      el('div',{class:'two'}, field('Keyword case', casing), field('Indent', width)),
+      el('div',{class:'btnrow'},
+        el('button',{class:'btn primary',onclick:run},'Format'),
+        el('button',{class:'btn',onclick:(e)=>copy(out.textContent,e.target)},'Copy')),
+      field('Formatted SQL', out));
+  }});
+
+// Python formatter
+tool({ id:'python', emoji:'🐍', name:'Python format', blurb:'Normalise Python indentation, tabs and blank lines.',
+  render(root){
+    const inp = el('textarea',{placeholder:'def f():\n\tif x:\n\t\treturn 1'});
+    const out = outputBox();
+    const width = el('select',{}, el('option',{value:'4'},'4 spaces'), el('option',{value:'2'},'2 spaces'));
+    const run = ()=>{
+      try{
+        out.classList.remove('err');
+        out.textContent = pythonFormat(inp.value, { indentSize: Number(width.value) });
+      }catch(e){ out.classList.add('err'); out.textContent = e.message; }
+    };
+    inp.addEventListener('input',run); width.addEventListener('change',run);
+    root.append(field('Python', inp), field('Indent', width),
+      el('div',{class:'btnrow'},
+        el('button',{class:'btn primary',onclick:run},'Format'),
+        el('button',{class:'btn',onclick:(e)=>copy(out.textContent,e.target)},'Copy')),
+      field('Formatted Python', out),
+      el('p',{class:'sub'},'Re-indents using the block structure already in your file rather than guessing where blocks end, so behaviour is preserved. This normalises whitespace — it is not a full Black-style rewriter.'));
   }});
 
 // Base64
@@ -1196,6 +1243,16 @@ const toolSEO = {
     description: 'Encode text to Base32 or decode Base32 back to text using the RFC 4648 alphabet. UTF-8 safe and runs entirely in your browser.',
     keywords: 'base32 encode, base32 decode, rfc 4648, base32 online, base32 converter'
   },
+  sql: {
+    title: 'SQL Formatter — Beautify Queries Online, Fully Offline',
+    description: 'Format SQL queries with clause breaks, indented subqueries and consistent keyword casing. Strings and comments are preserved. Nothing is uploaded.',
+    keywords: 'sql formatter, sql beautifier, format sql online, pretty print sql, sql pretty'
+  },
+  python: {
+    title: 'Python Formatter — Fix Indentation, Tabs & Blank Lines',
+    description: 'Normalise Python indentation, convert tabs to spaces, strip trailing whitespace and collapse blank lines. Runs entirely in your browser.',
+    keywords: 'python formatter, python indentation, tabs to spaces python, format python online, pep8 whitespace'
+  },
   url: { 
     title: 'URL Encoder & Decoder — Encode & Parse Query Strings Online',
     description: 'Encode URL components, decode percent-encoded text, and parse query string parameters. View key-value pairs in a table.',
@@ -1287,7 +1344,7 @@ function updateSEOTags(toolId){
   const seo = toolSEO[toolId] || {};
   const title = seo.title || 'Tools — paste anything, it finds the right dev tool';
   const keywords = seo.keywords || 'developer tools, json formatter, base64 encode decode';
-  const description = seo.description || 'Private, offline developer toolbox with 25 utilities. 100% in your browser, nothing uploaded.';
+  const description = seo.description || 'Private, offline developer toolbox with 27 utilities. 100% in your browser, nothing uploaded.';
   
   // Update title and meta tags
   document.title = title;

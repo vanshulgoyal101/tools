@@ -2,8 +2,8 @@
 // The app is a single self-contained page. The static shell is served
 // network-first so new deploys show up immediately, with a cache fallback
 // that keeps everything fully usable offline after the first visit.
-const CACHE = 'tools-v8';
-const ASSETS = ['./', './index.html', './lib.js?v=8', './manifest.webmanifest', './og.svg'];
+const CACHE = 'tools-v9';
+const ASSETS = ['./', './index.html', './lib.js?v=9', './manifest.webmanifest', './og.svg'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));

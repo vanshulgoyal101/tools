@@ -80,7 +80,7 @@ describe('shipped app DOM interactions', () => {
       .map((link) => ({ id: link.getAttribute('href').slice(1), name: link.textContent.trim() }))
       .filter(({ id }) => id);
 
-    expect(routes).toHaveLength(25);
+    expect(routes).toHaveLength(27);
     expect(routes.map(({ id }) => id)).toEqual(expect.arrayContaining(['hash', 'hmac', 'qr-reader']));
     for(const { id, name } of routes.filter(({ id }) => !['hash', 'hmac'].includes(id))){
       window.location.hash = id;
@@ -94,7 +94,7 @@ describe('shipped app DOM interactions', () => {
     const { document } = window;
 
     expect(document.querySelector('h1')?.textContent).toBe('Paste anything. It finds the tool.');
-    expect(document.querySelector('.tool-count')?.textContent).toBe('25 tools');
+    expect(document.querySelector('.tool-count')?.textContent).toBe('27 tools');
     document.querySelector('button[data-category="Security"]')?.click();
 
     expect(document.querySelector('.tool-count')?.textContent).toBe('3 tools in Security');
@@ -264,6 +264,23 @@ describe('shipped app DOM interactions', () => {
     cells[0].click();
     await waitFor(window, () => cells[0].textContent === 'Copied ✓');
     expect(cells[0].textContent).toBe('Copied ✓');
+  });
+
+  it('formats SQL through the route handler', () => {
+    const window = boot('#sql');
+    const { document } = window;
+    input(window, document.querySelector('textarea'), 'select a,b from t where x=1');
+
+    expect(document.querySelector('[role="status"]').textContent)
+      .toBe(['SELECT', '  a,', '  b', 'FROM t', 'WHERE x = 1'].join('\n'));
+  });
+
+  it('normalises Python indentation through the route handler', () => {
+    const window = boot('#python');
+    const { document } = window;
+    input(window, document.querySelector('textarea'), 'def f():\n\treturn 1');
+
+    expect(document.querySelector('[role="status"]').textContent).toBe('def f():\n    return 1\n');
   });
 
   it('escapes and unescapes HTML through the Escape tool buttons', () => {

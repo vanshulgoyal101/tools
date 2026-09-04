@@ -1,7 +1,7 @@
 # Features — tools.vanshul.com
 
 > **TL;DR** — Capability catalog for the offline developer toolbox: ✅ shipped, 🔜
-> proposed, ⛔ non-goal. 25 utilities + Smart Paste + ⌘K palette, running 100% in
+> proposed, ⛔ non-goal. 27 utilities + Smart Paste + ⌘K palette, running 100% in
 > the browser (installable PWA). Zero runtime dependencies.
 
 **Legend:** ✅ shipped · 🔜 proposed/potential · ⛔ deliberate non-goal.
