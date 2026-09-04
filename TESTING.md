@@ -111,7 +111,7 @@ Generates an HTML coverage report (see terminal output for path).
 | **ID & random** | 5 | uuidV4/V7 format, ULID length, nanoid/hex/pass lengths, uniqueness |
 | **Cron descriptions** | 8 | Plain-English descriptions for common patterns |
 
-**Total**: 101 unit tests, 26 jsdom interaction tests, and 39 cross-browser E2E scenarios
+**Total**: 101 unit tests, 26 jsdom interaction tests, 6 metadata-consistency checks, and 39 cross-browser E2E scenarios
 
 ---
 
