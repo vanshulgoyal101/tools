@@ -15,6 +15,9 @@ export default defineConfig({
     baseURL: 'http://localhost:8080',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // The app's own service worker otherwise leaks cached shells between
+    // tests and intermittently intercepts the module load.
+    serviceWorkers: 'block',
   },
   webServer: {
     command: 'python3 -m http.server 8080',
