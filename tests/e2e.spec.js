@@ -280,6 +280,21 @@ test.describe('Tools E2E smoke', () => {
     await expect(page.locator('.grid')).not.toContainText('JSON formatter');
   });
 
+  test('Sidebar: rows and icons are uniform', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/');
+    const rows = await page.locator('nav a').evaluateAll((links) => links.map((a) => {
+      const icon = a.querySelector('.tool-icon').getBoundingClientRect();
+      return {
+        height: Math.round(a.getBoundingClientRect().height),
+        icon: `${Math.round(icon.width)}x${Math.round(icon.height)}`,
+      };
+    }));
+    expect(rows.length).toBeGreaterThan(20);
+    expect(new Set(rows.map((r) => r.icon)).size, 'every nav icon should be the same size').toBe(1);
+    expect(new Set(rows.map((r) => r.height)).size, 'nav rows should all be the same height').toBe(1);
+  });
+
   test('Smart Paste: detects a cron expression', async ({ page }) => {
     await page.goto('/');
     await page.locator('.smart textarea').fill('*/5 9-17 * * 1-5');

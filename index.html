@@ -126,10 +126,11 @@
   .layout{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
   aside{border-right:1px solid var(--line);padding:20px 14px;position:sticky;top:0;height:100vh;overflow:auto}
   .brand{font-weight:700;font-size:1.25rem;letter-spacing:-.02em;padding:6px 10px 12px;display:flex;align-items:center;gap:8px}
-  .brand small{display:block;color:var(--muted);font-weight:400;font-size:.72rem;letter-spacing:.02em}
+  .brand small{display:block;color:var(--muted);font-weight:400;font-size:.72rem;letter-spacing:.02em;white-space:nowrap}
+  .brand .tool-icon{width:1.9rem;height:1.9rem}
   .theme-toggle{margin-left:auto;background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:5px 9px;font-size:.95rem;cursor:pointer;line-height:1;display:inline-flex;align-items:center;justify-content:center}
   .theme-toggle:hover{border-color:var(--accent)}
-  nav a{display:block;padding:9px 12px;border-radius:9px;color:var(--text);text-decoration:none;font-size:.92rem}
+  nav a{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:9px;color:var(--text);text-decoration:none;font-size:.92rem}
   nav a:hover{background:var(--panel)}
   nav a.active{background:var(--panel-2);color:var(--accent);font-weight:600}
   main{padding:32px clamp(16px,4vw,44px);max-width:900px}
@@ -193,7 +194,7 @@
     .layout{grid-template-columns:1fr}
     aside{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line)}
     nav{display:flex;flex-wrap:wrap;gap:4px}
-    nav a{font-size:.85rem;padding:7px 10px}
+    nav a{font-size:.85rem;padding:6px 8px;gap:8px}
     .two{grid-template-columns:1fr}
   }
 </style>
@@ -1090,7 +1091,7 @@ const readRecent=()=>store(()=>JSON.parse(localStorage.getItem(RECENT_KEY)||'[]'
 const rememberTool=(id)=>store(()=>localStorage.setItem(RECENT_KEY,
   JSON.stringify([id,...readRecent().filter(x=>x!==id)].slice(0,5))));
 
-nav.append(el('a',{href:'#','data-home':'1',onclick:(e)=>{e.preventDefault();location.hash='';}},toolIcon('json'),'All tools'));
+nav.append(el('a',{href:'#','data-home':'1',onclick:(e)=>{e.preventDefault();location.hash='';}},toolIcon('json', true),'All tools'));
 for(const t of tools) nav.append(el('a',{href:'#'+t.id},toolIcon(t.id, true),t.name));
 
 // ---------- Smart Paste (the wedge) + command palette ----------
